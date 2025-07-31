@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Performance optimization: Hardware acceleration for frequently used elements */
+.transition-all {
+  will-change: transform, opacity, background-color;
+}
+
+/* Improve button responsiveness */
+button {
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optimize focus outlines for better accessibility */
+*:focus {
+  outline-offset: 2px;
+}
+
+/* Smoother animations */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

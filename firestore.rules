@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Chapters collection (root level)
+    match /Chapters/{chapterSlug} {
+      allow read, write: if true;
+    }
+    
+    // Chapter-scoped question collections
+    match /Chapters/{chapterSlug}/{chapterSlug}-Diagnostic-Questions/{document} {
+      allow read, write: if true;
+    }
+    
+    match /Chapters/{chapterSlug}/{chapterSlug}-Practice-Questions/{document} {
+      allow read, write: if true;
+    }
+    
+    match /Chapters/{chapterSlug}/{chapterSlug}-Test-Questions/{document} {
+      allow read, write: if true;
+    }
+    
+    // Chapter-scoped Theory (videos) collection
+    match /Chapters/{chapterSlug}/{chapterSlug}-Theory/{document} {
+      allow read, write: if true;
+    }
+    
+    // Chapter-scoped Breakdowns collection
+    match /Chapters/{chapterSlug}/{chapterSlug}-Breakdowns/{document} {
+      allow read, write: if true;
+    }
+    
+    // Slides subcollection under Breakdowns
+    match /Chapters/{chapterSlug}/{chapterSlug}-Breakdowns/{breakdownId}/slides/{slideId} {
+      allow read, write: if true;
+    }
+    
+    // Legacy collections (for backward compatibility)
+    match /diagnosticQuestions/{document} {
+      allow read, write: if true;
+    }
+    
+    match /practiceQuestions/{document} {
+      allow read, write: if true;
+    }
+    
+    match /testQuestions/{document} {
+      allow read, write: if true;
+    }
+    
+    match /chapterVideos/{document} {
+      allow read, write: if true;
+    }
+    
+    match /breakdowns/{document} {
+      allow read, write: if true;
+    }
+    
+    match /breakdowns/{breakdownId}/slides/{slideId} {
+      allow read, write: if true;
+    }
+  }
+}
