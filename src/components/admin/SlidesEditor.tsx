@@ -5,13 +5,17 @@ import { db } from '../../firebase';
 import { Plus, Edit, Trash2, ChevronUp, ChevronDown, FileText, HelpCircle } from 'lucide-react';
 import SlideForm from './SlideForm';
 import Button from './Button';
+import Math from '../Math';
+import { useChapter } from '../../contexts/ChapterContext';
 
 interface SlidesEditorProps {
-  breakdownId: string;
-  chapterSlug: string;
+  breakdownId?: string;
+  questionId?: string;
+  collectionSuffix?: string;
 }
 
-function SlidesEditor({ breakdownId, chapterSlug }: SlidesEditorProps) {
+function SlidesEditor({ breakdownId, questionId, collectionSuffix = 'Breakdowns' }: SlidesEditorProps) {
+  const { selectedChapter } = useChapter();
   const [slides, setSlides] = useState<BreakdownSlide[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSlide, setSelectedSlide] = useState<BreakdownSlide | null>(null);
@@ -19,7 +23,13 @@ function SlidesEditor({ breakdownId, chapterSlug }: SlidesEditorProps) {
   const [slideType, setSlideType] = useState<'theory' | 'question'>('theory');
 
   useEffect(() => {
-    const slidesRef = collection(db, 'Chapters', chapterSlug, `${chapterSlug}-Breakdowns`, breakdownId, 'slides');
+    if (!selectedChapter) return;
+
+    const itemId = breakdownId || questionId;
+    if (!itemId) return;
+
+    const chapterName = selectedChapter.name || selectedChapter.slug;
+    const slidesRef = collection(db, 'Chapters', selectedChapter.id, `${chapterName}-${collectionSuffix}`, itemId, 'Slides');
     const q = query(slidesRef, orderBy('createdAt'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -32,7 +42,7 @@ function SlidesEditor({ breakdownId, chapterSlug }: SlidesEditorProps) {
     });
 
     return unsubscribe;
-  }, [breakdownId, chapterSlug]);
+  }, [breakdownId, questionId, selectedChapter, collectionSuffix]);
 
   const handleCreateSlide = (type: 'theory' | 'question') => {
     setSelectedSlide(null);
@@ -47,11 +57,17 @@ function SlidesEditor({ breakdownId, chapterSlug }: SlidesEditorProps) {
   };
 
   const handleSubmitSlide = async (slideData: Omit<BreakdownSlide, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const slidesRef = collection(db, 'Chapters', chapterSlug, `${chapterSlug}-Breakdowns`, breakdownId, 'slides');
+    if (!selectedChapter) return;
+    
+    const itemId = breakdownId || questionId;
+    if (!itemId) return;
+    
+    const chapterName = selectedChapter.name || selectedChapter.slug;
+    const slidesRef = collection(db, 'Chapters', selectedChapter.id, `${chapterName}-${collectionSuffix}`, itemId, 'Slides');
     
     if (selectedSlide) {
       // Update existing slide
-      await updateDoc(doc(db, 'Chapters', chapterSlug, `${chapterSlug}-Breakdowns`, breakdownId, 'slides', selectedSlide.id), {
+      await updateDoc(doc(db, 'Chapters', selectedChapter.id, `${chapterName}-${collectionSuffix}`, itemId, 'Slides', selectedSlide.id), {
         ...slideData,
         updatedAt: Timestamp.now()
       });
@@ -67,11 +83,22 @@ function SlidesEditor({ breakdownId, chapterSlug }: SlidesEditorProps) {
 
   const handleDeleteSlide = async (slideId: string) => {
     if (confirm('Are you sure you want to delete this slide?')) {
-      await deleteDoc(doc(db, 'Chapters', chapterSlug, `${chapterSlug}-Breakdowns`, breakdownId, 'slides', slideId));
+      if (!selectedChapter) return;
+      
+      const itemId = breakdownId || questionId;
+      if (!itemId) return;
+      
+      const chapterName = selectedChapter.name || selectedChapter.slug;
+      await deleteDoc(doc(db, 'Chapters', selectedChapter.id, `${chapterName}-${collectionSuffix}`, itemId, 'Slides', slideId));
     }
   };
 
   const moveSlide = async (slideId: string, direction: 'up' | 'down') => {
+    if (!selectedChapter) return;
+    
+    const itemId = breakdownId || questionId;
+    if (!itemId) return;
+    
     // Simple reordering by updating timestamps
     const slideIndex = slides.findIndex(s => s.id === slideId);
     if (
@@ -85,12 +112,16 @@ function SlidesEditor({ breakdownId, chapterSlug }: SlidesEditorProps) {
     const currentSlide = slides[slideIndex];
     const targetSlide = slides[targetIndex];
 
+    const chapterName = selectedChapter.name || selectedChapter.slug;
+    const currentSlideDocRef = doc(db, 'Chapters', selectedChapter.id, `${chapterName}-${collectionSuffix}`, itemId, 'Slides', currentSlide.id);
+    const targetSlideDocRef = doc(db, 'Chapters', selectedChapter.id, `${chapterName}-${collectionSuffix}`, itemId, 'Slides', targetSlide.id);
+
     // Swap timestamps
-          await updateDoc(doc(db, 'Chapters', chapterSlug, `${chapterSlug}-Breakdowns`, breakdownId, 'slides', currentSlide.id), {
+    await updateDoc(currentSlideDocRef, {
       createdAt: targetSlide.createdAt
     });
     
-          await updateDoc(doc(db, 'Chapters', chapterSlug, `${chapterSlug}-Breakdowns`, breakdownId, 'slides', targetSlide.id), {
+    await updateDoc(targetSlideDocRef, {
       createdAt: currentSlide.createdAt
     });
   };
@@ -152,7 +183,12 @@ function SlidesEditor({ breakdownId, chapterSlug }: SlidesEditorProps) {
                     </span>
                     <h3 className="font-medium text-gray-900">{slide.title}</h3>
                   </div>
-                  <p className="text-sm text-gray-500 max-w-md truncate">{slide.content}</p>
+                  <div className="text-sm text-gray-500 max-w-md truncate">
+                    <Math>{slide.content}</Math>
+                  </div>
+                  {slide.imageUrl && (
+                    <img src={slide.imageUrl} alt={slide.title} className="mt-2 h-12 w-12 object-cover rounded" />
+                  )}
                 </div>
               </div>
               

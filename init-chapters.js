@@ -1,5 +1,22 @@
-import { collection, doc, setDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+// Standalone script to initialize chapters in Firebase
+// Run with: node init-chapters.js
+
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc, Timestamp } from 'firebase/firestore';
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyC-xfzgchsvlF6_cyAvHXNUP4u6XpUpCbw",
+  authDomain: "invisible-mechanics---2.firebaseapp.com", 
+  projectId: "invisible-mechanics---2",
+  storageBucket: "invisible-mechanics---2.firebasestorage.app",
+  messagingSenderId: "1087911820316",
+  appId: "1:1087911820316:web:469b8a189be2c005cc33d9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 // Physics Chapters with Combined SkillTags (8 chapters total)
 const sampleChapters = [
@@ -495,8 +512,8 @@ const sampleChapters = [
   }
 ];
 
-export async function initializeChapters() {
-  console.log('Initializing 8 physics chapters with combined skillTags...');
+async function initializeChapters() {
+  console.log('🚀 Initializing 8 physics chapters with combined skillTags...');
   
   for (let i = 0; i < sampleChapters.length; i++) {
     const chapter = sampleChapters[i];
@@ -513,15 +530,16 @@ export async function initializeChapters() {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       }, { merge: true });
-      console.log(`✓ Initialized chapter ${i + 1}: ${chapter.name} with ${chapter.defaultSkillTags.length} default skillTags`);
+      console.log(`✅ Initialized chapter ${i + 1}: ${chapter.name} with ${chapter.defaultSkillTags.length} default skillTags`);
     } catch (error) {
-      console.error(`✗ Failed to initialize chapter ${chapter.name}:`, error);
+      console.error(`❌ Failed to initialize chapter ${chapter.name}:`, error);
     }
   }
   
-  console.log('Chapter initialization complete! All 8 physics chapters with combined skillTags have been stored.');
+  console.log('🎉 Chapter initialization complete! All 8 physics chapters with combined skillTags have been stored.');
+  console.log('🤖 These skillTags are now ready for OpenAI GPT auto-tagging integration!');
+  process.exit(0);
 }
 
-// Run this function to initialize chapters
-// You can call this from the browser console or create a button in the UI
-// initializeChapters();
+// Run the initialization
+initializeChapters().catch(console.error);

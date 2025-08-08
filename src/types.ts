@@ -5,9 +5,10 @@ export type ExamType = "JEE Main" | "JEE Advanced" | "NEET";
 export interface QuestionBase {
   id: string;             // Firestore doc ID
   type: QuestionType;
+  title: string;
   skillTag: string;
   questionText: string;
-  detailedAnswer: string;
+  detailedAnswer?: string; // Made optional - removed from forms
   chapter: string;
   imageUrl?: string;
   difficulty: number;     // 1-10
@@ -59,7 +60,7 @@ export type BreakdownSlide =
       type: QuestionType;
       skillTag: string;
       questionText: string;
-      detailedAnswer: string;
+      detailedAnswer?: string; // Made optional - removed from forms
       choices?: string[];
       answerIndex?: number;
       answerIndices?: number[];
@@ -71,13 +72,28 @@ export interface Breakdown {
   title: string;
   description: string;
   chapterId: string;
-  skillTag: string;
+  // Backward compatibility: legacy single tag
+  skillTag?: string;
+  // New: support multiple tags (from any chapter)
+  skillTags?: string[];
   type: QuestionType;
+  imageUrl?: string;
   createdAt: any;
   updatedAt: any;
+  // Answer fields for the main breakdown question
+  choices?: string[];
+  answerIndex?: number;
+  answerIndices?: number[];
+  range?: { min: number; max: number };
 }
 
 export interface Chapter {
   id: string;
   title: string;
+  name?: string;
+  slug?: string;
+  subject?: string;
+  skillTags?: string[]; // SkillTags field added to existing chapters
+  createdAt?: any;
+  updatedAt?: any;
 }

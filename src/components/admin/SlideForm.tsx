@@ -1,7 +1,9 @@
-import React, { useState, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { BreakdownSlide, QuestionType } from '../../types';
 import { X, Plus, Trash2 } from 'lucide-react';
 import Button from './Button';
+import LatexRefinementButton from './LatexRefinementButton';
+import ImageUploader from './ImageUploader';
 
 interface SlideFormProps {
   slide?: BreakdownSlide;
@@ -12,53 +14,64 @@ interface SlideFormProps {
 }
 
 function SlideForm({ slide, onSubmit, onClose, isOpen, slideType }: SlideFormProps) {
-  const [formData, setFormData] = useState(() => {
-    if (slide) {
-      return slide;
-    }
-    
-    const baseData = {
-      kind: slideType,
-      title: '',
-      content: '',
-      imageUrl: '',
-      hint: ''
-    };
-
-    if (slideType === 'question') {
-      return {
-        ...baseData,
-        kind: 'question' as const,
-        type: 'MCQ' as QuestionType,
-        skillTag: '',
-        questionText: '',
-        detailedAnswer: '',
-        choices: ['', ''],
-        answerIndex: 0,
-        answerIndices: []
-      };
-    }
-
-    return {
-      ...baseData,
-      kind: 'theory' as const
-    };
+  const [formData, setFormData] = useState<any>({
+    kind: 'theory',
+    title: '',
+    content: '',
+    imageUrl: '',
+    hint: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Reset form data when slideType or slide changes
+  useEffect(() => {
+    if (slide) {
+      setFormData(slide);
+    } else {
+      const baseData = {
+        kind: slideType,
+        title: '',
+        content: '',
+        imageUrl: '',
+        hint: ''
+      };
+
+      if (slideType === 'question') {
+        setFormData({
+          ...baseData,
+          kind: 'question' as const,
+          type: 'MCQ' as QuestionType,
+          skillTag: '',
+          questionText: '',
+          choices: ['', ''],
+          answerIndex: 0,
+          answerIndices: [],
+          range: { min: 0, max: 100 }
+        });
+      } else {
+        setFormData({
+          ...baseData,
+          kind: 'theory' as const
+        });
+      }
+    }
+  }, [slide, slideType]);
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.content.trim()) newErrors.content = 'Content is required';
+    
+    if (formData.kind === 'theory') {
+      if (!formData.content.trim()) newErrors.content = 'Content is required';
+    }
 
     if (formData.kind === 'question') {
       const questionSlide = formData as any;
-      if (!questionSlide.skillTag?.trim()) newErrors.skillTag = 'Skill tag is required';
+
       if (!questionSlide.questionText?.trim()) newErrors.questionText = 'Question text is required';
-      if (!questionSlide.detailedAnswer?.trim()) newErrors.detailedAnswer = 'Detailed answer is required';
 
       if (questionSlide.type === 'MCQ' || questionSlide.type === 'MultipleAnswer') {
         if (!questionSlide.choices || questionSlide.choices.length < 2) {
@@ -169,46 +182,59 @@ function SlideForm({ slide, onSubmit, onClose, isOpen, slideType }: SlideFormPro
             {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
           </div>
 
+          {formData.kind === 'theory' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Content
+              </label>
+              <textarea
+                value={formData.content}
+                onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                rows={6}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.content ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter your theory content with LaTeX mathematical notation..."
+              />
+              {errors.content && <p className="mt-1 text-sm text-red-600">{errors.content}</p>}
+              
+              {/* AI LaTeX Refinement */}
+              {formData.content && (
+                <div className="mt-3 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg">
+                  <LatexRefinementButton
+                    content={formData.content}
+                    contentType="theory"
+                    onContentRefined={(refinedContent) => 
+                      setFormData(prev => ({ ...prev, content: refinedContent }))
+                    }
+                    disabled={submitting}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Content
+              Image (Optional)
             </label>
-            <textarea
-              value={formData.content}
-              onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-              rows={4}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.content ? 'border-red-500' : 'border-gray-300'
-              }`}
+            <ImageUploader
+              value={formData.imageUrl || ''}
+              onChange={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))}
+              disabled={submitting}
             />
-            {errors.content && <p className="mt-1 text-sm text-red-600">{errors.content}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image URL (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.imageUrl || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="https://example.com/image.jpg"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hint (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.hint || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, hint: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Hint (Optional)
+            </label>
+            <input
+              type="text"
+              value={formData.hint || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, hint: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           {formData.kind === 'question' && (
@@ -217,36 +243,19 @@ function SlideForm({ slide, onSubmit, onClose, isOpen, slideType }: SlideFormPro
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Question Details</h3>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Question Type
-                  </label>
-                  <select
-                    value={(formData as any).type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as QuestionType }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="MCQ">Multiple Choice (Single Answer)</option>
-                    <option value="MultipleAnswer">Multiple Choice (Multiple Answers)</option>
-                    <option value="Numerical">Numerical</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Skill Tag
-                  </label>
-                  <input
-                    type="text"
-                    value={(formData as any).skillTag || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, skillTag: e.target.value }))}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.skillTag ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.skillTag && <p className="mt-1 text-sm text-red-600">{errors.skillTag}</p>}
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Question Type
+                </label>
+                <select
+                  value={(formData as any).type}
+                  onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as QuestionType }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="MCQ">Multiple Choice (Single Answer)</option>
+                  <option value="MultipleAnswer">Multiple Choice (Multiple Answers)</option>
+                  <option value="Numerical">Numerical</option>
+                </select>
               </div>
 
               <div>
@@ -256,28 +265,30 @@ function SlideForm({ slide, onSubmit, onClose, isOpen, slideType }: SlideFormPro
                 <textarea
                   value={(formData as any).questionText || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, questionText: e.target.value }))}
-                  rows={3}
+                  rows={4}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.questionText ? 'border-red-500' : 'border-gray-300'
                   }`}
+                  placeholder="Enter your question with LaTeX mathematical notation..."
                 />
                 {errors.questionText && <p className="mt-1 text-sm text-red-600">{errors.questionText}</p>}
+                
+                {/* AI LaTeX Refinement for Question */}
+                {(formData as any).questionText && (
+                  <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg">
+                    <LatexRefinementButton
+                      content={(formData as any).questionText}
+                      contentType="question"
+                      onContentRefined={(refinedContent) => 
+                        setFormData(prev => ({ ...prev, questionText: refinedContent }))
+                      }
+                      disabled={submitting}
+                    />
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Detailed Answer
-                </label>
-                <textarea
-                  value={(formData as any).detailedAnswer || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, detailedAnswer: e.target.value }))}
-                  rows={3}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.detailedAnswer ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.detailedAnswer && <p className="mt-1 text-sm text-red-600">{errors.detailedAnswer}</p>}
-              </div>
+
 
               {((formData as any).type === 'MCQ' || (formData as any).type === 'MultipleAnswer') && (
                 <div>

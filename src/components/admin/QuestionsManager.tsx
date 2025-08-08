@@ -1,8 +1,9 @@
 import React, { useState, memo } from 'react';
 import { QuestionBase } from '../../types';
 import { useChapterCollection } from '../../hooks/useChapterFirestore';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Layers } from 'lucide-react';
 import QuestionForm from './QuestionForm';
+import SlidesEditor from './SlidesEditor';
 import Button from './Button';
 
 interface QuestionsManagerProps {
@@ -41,6 +42,7 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
   const { data: questions, loading, error, createItem, updateItem, deleteItem, selectedChapter } = useChapterCollection<QuestionBase>(collectionName);
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionBase | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
 
 
 
@@ -57,24 +59,32 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
   const handleSubmit = async (questionData: Omit<QuestionBase, 'id'>) => {
     console.log('QuestionsManager handleSubmit called with:', JSON.stringify(questionData, null, 2));
     try {
-      let result;
+      let questionId;
       if (selectedQuestion) {
         console.log('Updating existing question:', selectedQuestion.id);
-        result = await updateItem(selectedQuestion.id, questionData);
+        await updateItem(selectedQuestion.id, questionData);
+        questionId = selectedQuestion.id;
       } else {
         console.log('Creating new question');
-        result = await createItem(questionData);
+        questionId = await createItem(questionData);
       }
-      console.log('Operation successful, result:', result);
+      console.log('Operation successful, result:', questionId);
       
       // Close form and reset state after successful submission
       setIsFormOpen(false);
       setSelectedQuestion(null);
       console.log('Form closed and state reset');
+      
+      // Open slides editor after creating/updating
+      setEditingQuestionId(questionId);
     } catch (error) {
       console.error('Error submitting question:', error);
       throw error; // Re-throw to let the form handle the error
     }
+  };
+
+  const handleEditSlides = (questionId: string) => {
+    setEditingQuestionId(questionId);
   };
 
   const handleDelete = async (id: string) => {
@@ -83,6 +93,30 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
       await deleteItem(id);
     }
   };
+
+  if (editingQuestionId) {
+    return (
+      <div>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setEditingQuestionId(null)}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              ← Back to {title}
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {questions.find(q => q.id === editingQuestionId)?.title || 'Answer Slides'}
+            </h1>
+          </div>
+        </div>
+        <SlidesEditor 
+          questionId={editingQuestionId} 
+          collectionSuffix={collectionName}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -157,6 +191,9 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
                 ID
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Title
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Skill Tag
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -175,6 +212,11 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
               <tr key={question.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
                   {question.id}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  <div className="max-w-xs truncate font-medium">
+                    {question.title || 'No Title'}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -196,6 +238,16 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <Button
+                    onClick={() => handleEditSlides(question.id)}
+                    variant="secondary"
+                    size="sm"
+                    icon={Layers}
+                    className="mr-2 p-2"
+                    title="Edit Answer Slides"
+                  >
+                    <span className="sr-only">Edit Answer Slides</span>
+                  </Button>
                   <Button
                     onClick={() => handleEdit(question)}
                     variant="secondary"

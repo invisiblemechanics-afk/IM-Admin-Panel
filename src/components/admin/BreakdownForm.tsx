@@ -1,8 +1,11 @@
 import React, { useState, useEffect, memo } from 'react';
 import { Breakdown, QuestionType } from '../../types';
 import { useChapter } from '../../contexts/ChapterContext';
-import { X } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import Button from './Button';
+import AutoGenerationButtons from './AutoGenerationButtons';
+import TagPicker from './TagPicker';
+import ImageUploader from './ImageUploader';
 
 interface BreakdownFormProps {
   breakdown?: Breakdown;
@@ -18,9 +21,15 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
     description: '',
     chapterId: '', // Will be auto-populated from selected chapter
     skillTag: '',
+    skillTags: [],
     type: 'MCQ',
+    imageUrl: '',
     createdAt: null,
-    updatedAt: null
+    updatedAt: null,
+    choices: ['', ''],
+    answerIndex: 0,
+    answerIndices: [],
+    range: { min: 0, max: 100 }
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -31,10 +40,16 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
         title: breakdown.title,
         description: breakdown.description,
         chapterId: breakdown.chapterId,
-        skillTag: breakdown.skillTag,
+        skillTag: breakdown.skillTag || '',
+        skillTags: breakdown.skillTags || [],
         type: breakdown.type,
+        imageUrl: breakdown.imageUrl || '',
         createdAt: breakdown.createdAt,
-        updatedAt: breakdown.updatedAt
+        updatedAt: breakdown.updatedAt,
+        choices: breakdown.choices || ['', ''],
+        answerIndex: breakdown.answerIndex || 0,
+        answerIndices: breakdown.answerIndices || [],
+        range: breakdown.range || { min: 0, max: 100 }
       });
     }
   }, [breakdown]);
@@ -44,8 +59,32 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
 
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
+    if (!formData.skillTag.trim() && (!formData.skillTags || formData.skillTags.length === 0)) {
+      newErrors.skillTag = 'At least one skill tag is required';
+    }
 
-    if (!formData.skillTag.trim()) newErrors.skillTag = 'Skill tag is required';
+    // Validate answer fields based on question type
+    if (formData.type === 'MCQ' || formData.type === 'MultipleAnswer') {
+      if (!formData.choices || formData.choices.length < 2) {
+        newErrors.choices = 'At least 2 choices are required';
+      } else if (formData.choices.some(choice => !choice.trim())) {
+        newErrors.choices = 'All choices must have content';
+      }
+
+      if (formData.type === 'MCQ' && (formData.answerIndex === undefined || formData.answerIndex < 0)) {
+        newErrors.answerIndex = 'One answer must be selected';
+      }
+
+      if (formData.type === 'MultipleAnswer' && (!formData.answerIndices || formData.answerIndices.length === 0)) {
+        newErrors.answerIndices = 'At least one answer must be selected';
+      }
+    }
+
+    if (formData.type === 'Numerical') {
+      if (!formData.range || formData.range.min > formData.range.max) {
+        newErrors.range = 'Min value must be less than or equal to max value';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -69,6 +108,34 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const addChoice = () => {
+    if (formData.choices && formData.choices.length < 6) {
+      setFormData(prev => ({
+        ...prev,
+        choices: [...(prev.choices || []), '']
+      }));
+    }
+  };
+
+  const removeChoice = (index: number) => {
+    if (formData.choices && formData.choices.length > 2) {
+      const newChoices = formData.choices.filter((_, i) => i !== index);
+      setFormData(prev => ({
+        ...prev,
+        choices: newChoices,
+        answerIndex: prev.answerIndex && prev.answerIndex >= index ? Math.max(0, prev.answerIndex - 1) : prev.answerIndex,
+        answerIndices: prev.answerIndices?.filter(i => i !== index).map(i => i > index ? i - 1 : i) || []
+      }));
+    }
+  };
+
+  const updateChoice = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      choices: prev.choices?.map((choice, i) => i === index ? value : choice) || []
+    }));
   };
 
   if (!isOpen) return null;
@@ -103,7 +170,7 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
+              Question Text
             </label>
             <textarea
               value={formData.description}
@@ -116,20 +183,27 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
             {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Image (Optional)
+            </label>
+            <ImageUploader
+              value={formData.imageUrl}
+              onChange={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))}
+              disabled={submitting}
+            />
+            {errors.imageUrl && <p className="mt-1 text-sm text-red-600">{errors.imageUrl}</p>}
+          </div>
 
-
+          {/* Skill tags selection and generation */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Skill Tag
+                Skill Tags
               </label>
-              <input
-                type="text"
-                value={formData.skillTag}
-                onChange={(e) => setFormData(prev => ({ ...prev, skillTag: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.skillTag ? 'border-red-500' : 'border-gray-300'
-                }`}
+              <TagPicker
+                selected={formData.skillTags || []}
+                onChange={(tags) => setFormData(prev => ({ ...prev, skillTags: tags, skillTag: tags[0] || '' }))}
               />
               {errors.skillTag && <p className="mt-1 text-sm text-red-600">{errors.skillTag}</p>}
             </div>
@@ -149,6 +223,122 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
               </select>
             </div>
           </div>
+
+          {/* AI helpers similar to Questions */}
+          {formData.description && (
+            <div className="space-y-3">
+              <AutoGenerationButtons
+                questionText={formData.description}
+                questionType={formData.type}
+                onSkillTagGenerated={(skillTag) => setFormData(prev => ({ ...prev, skillTag, skillTags: Array.from(new Set([...(prev.skillTags || []), skillTag])) }))}
+                onTitleGenerated={(title) => setFormData(prev => ({ ...prev, title }))}
+                onDifficultyGenerated={() => {}}
+                onAllGenerated={(data) => setFormData(prev => ({ ...prev, title: data.title, skillTag: data.skillTag, skillTags: Array.from(new Set([...(prev.skillTags || []), data.skillTag])) }))}
+              />
+            </div>
+          )}
+
+          {(formData.type === 'MCQ' || formData.type === 'MultipleAnswer') && (
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Answer Choices
+                </label>
+                <button
+                  type="button"
+                  onClick={addChoice}
+                  disabled={formData.choices && formData.choices.length >= 6}
+                  className="flex items-center px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Choice
+                </button>
+              </div>
+              
+              {formData.choices?.map((choice, index) => (
+                <div key={index} className="flex items-center space-x-2 mb-2">
+                  {formData.type === 'MCQ' ? (
+                    <input
+                      type="radio"
+                      name="correctAnswer"
+                      checked={formData.answerIndex === index}
+                      onChange={() => setFormData(prev => ({ ...prev, answerIndex: index }))}
+                      className="text-blue-600"
+                    />
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={formData.answerIndices?.includes(index) || false}
+                      onChange={(e) => {
+                        const indices = formData.answerIndices || [];
+                        if (e.target.checked) {
+                          setFormData(prev => ({ ...prev, answerIndices: [...indices, index] }));
+                        } else {
+                          setFormData(prev => ({ ...prev, answerIndices: indices.filter(i => i !== index) }));
+                        }
+                      }}
+                      className="text-blue-600"
+                    />
+                  )}
+                  <input
+                    type="text"
+                    value={choice}
+                    onChange={(e) => updateChoice(index, e.target.value)}
+                    placeholder={`Choice ${index + 1}`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {formData.choices && formData.choices.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removeChoice(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              
+              {errors.choices && <p className="mt-1 text-sm text-red-600">{errors.choices}</p>}
+              {errors.answerIndex && <p className="mt-1 text-sm text-red-600">{errors.answerIndex}</p>}
+              {errors.answerIndices && <p className="mt-1 text-sm text-red-600">{errors.answerIndices}</p>}
+            </div>
+          )}
+
+          {formData.type === 'Numerical' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valid Range
+              </label>
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">Min Value</label>
+                  <input
+                    type="number"
+                    value={formData.range?.min || 0}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      range: { ...prev.range!, min: parseFloat(e.target.value) || 0 } 
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">Max Value</label>
+                  <input
+                    type="number"
+                    value={formData.range?.max || 0}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      range: { ...prev.range!, max: parseFloat(e.target.value) || 0 } 
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              {errors.range && <p className="mt-1 text-sm text-red-600">{errors.range}</p>}
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-6 border-t">
             <Button

@@ -3,6 +3,11 @@ import { QuestionBase, QuestionType, ExamType } from '../../types';
 import { useChapter } from '../../contexts/ChapterContext';
 import { X, Plus, Trash2 } from 'lucide-react';
 import Button from './Button';
+import AutoGenerationButtons from './AutoGenerationButtons';
+import LatexRefinementButton from './LatexRefinementButton';
+import ImageUploader from './ImageUploader';
+
+// Updated: Removed detailedAnswer field from form
 
 interface QuestionFormProps {
   question?: QuestionBase;
@@ -15,9 +20,9 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
   const { selectedChapter } = useChapter();
   const [formData, setFormData] = useState<Omit<QuestionBase, 'id'>>({
     type: 'MCQ',
+    title: '',
     skillTag: '',
     questionText: '',
-    detailedAnswer: '',
     chapter: '', // Will be auto-populated from selected chapter
     imageUrl: '',
     difficulty: 5,
@@ -34,9 +39,9 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
     if (question) {
       setFormData({
         type: question.type,
+        title: question.title || '',
         skillTag: question.skillTag,
         questionText: question.questionText,
-        detailedAnswer: question.detailedAnswer,
         chapter: question.chapter,
         imageUrl: question.imageUrl || '',
         difficulty: question.difficulty || 5,
@@ -52,10 +57,10 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.skillTag.trim()) newErrors.skillTag = 'Skill tag is required';
 
     if (!formData.questionText.trim()) newErrors.questionText = 'Question text is required';
-    if (!formData.detailedAnswer.trim()) newErrors.detailedAnswer = 'Detailed answer is required';
 
     if (formData.difficulty < 1 || formData.difficulty > 10) newErrors.difficulty = 'Difficulty must be between 1 and 10';
 
@@ -174,6 +179,22 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              Title
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.title ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="Enter question title"
+            />
+            {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Skill Tag
             </label>
             <input
@@ -195,45 +216,68 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
             <textarea
               value={formData.questionText}
               onChange={(e) => setFormData(prev => ({ ...prev, questionText: e.target.value }))}
-              rows={4}
+              rows={5}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.questionText ? 'border-red-500' : 'border-gray-300'
               }`}
+              placeholder="Enter your question with LaTeX mathematical notation..."
             />
             {errors.questionText && <p className="mt-1 text-sm text-red-600">{errors.questionText}</p>}
           </div>
 
+          {/* AI LaTeX Refinement Section */}
+          {formData.questionText && (
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4">
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-800 mb-2 flex items-center">
+                  🔧 LaTeX Refinement & Content Generation
+                </h3>
+                <LatexRefinementButton
+                  content={formData.questionText}
+                  contentType="question"
+                  onContentRefined={(refinedContent) => 
+                    setFormData(prev => ({ ...prev, questionText: refinedContent }))
+                  }
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* AI Auto-Generation Section */}
+          {formData.questionText && (
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
+              <AutoGenerationButtons
+                questionText={formData.questionText}
+                questionType={formData.type}
+                exam={formData.exam}
+                onSkillTagGenerated={(skillTag) => setFormData(prev => ({ ...prev, skillTag }))}
+                onTitleGenerated={(title) => setFormData(prev => ({ ...prev, title }))}
+                onDifficultyGenerated={(difficulty) => setFormData(prev => ({ ...prev, difficulty }))}
+                onAllGenerated={(data) => setFormData(prev => ({
+                  ...prev,
+                  skillTag: data.skillTag,
+                  title: data.title,
+                  difficulty: data.difficulty
+                }))}
+                disabled={submitting}
+              />
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Detailed Answer
+              Image (Optional)
             </label>
-            <textarea
-              value={formData.detailedAnswer}
-              onChange={(e) => setFormData(prev => ({ ...prev, detailedAnswer: e.target.value }))}
-              rows={4}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.detailedAnswer ? 'border-red-500' : 'border-gray-300'
-              }`}
+            <ImageUploader
+              value={formData.imageUrl}
+              onChange={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))}
+              disabled={submitting}
             />
-            {errors.detailedAnswer && <p className="mt-1 text-sm text-red-600">{errors.detailedAnswer}</p>}
+            {errors.imageUrl && <p className="mt-1 text-sm text-red-600">{errors.imageUrl}</p>}
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image URL (Optional)
-              </label>
-              <input
-                type="url"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.imageUrl ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="https://example.com/image.jpg (optional)"
-              />
-              {errors.imageUrl && <p className="mt-1 text-sm text-red-600">{errors.imageUrl}</p>}
-            </div>
+          <div className="grid grid-cols-2 gap-4">
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -406,4 +450,5 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
   );
 }
 
-export default memo(QuestionForm);
+const MemoizedQuestionForm = memo(QuestionForm);
+export default MemoizedQuestionForm;

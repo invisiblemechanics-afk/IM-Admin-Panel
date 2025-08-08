@@ -8,6 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 const QuestionsManager = React.lazy(() => import('./components/admin/QuestionsManager'));
 const VideosManager = React.lazy(() => import('./components/admin/VideosManager'));
 const BreakdownsManager = React.lazy(() => import('./components/admin/BreakdownsManager'));
+const SkillTagsManager = React.lazy(() => import('./components/admin/SkillTagsManager'));
 
 import LoadingSpinner from './components/LoadingSpinner';
 
@@ -69,8 +70,16 @@ function App() {
                 </Suspense>
               } 
             />
-          </Route>
-        </Routes>
+            <Route 
+              path="skilltags" 
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <SkillTagsManager />
+                </Suspense>
+              } 
+            />
+            </Route>
+          </Routes>
       </Router>
     </ChapterProvider>
     </ErrorBoundary>

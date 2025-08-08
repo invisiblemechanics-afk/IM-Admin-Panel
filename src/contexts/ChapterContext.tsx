@@ -7,6 +7,7 @@ interface Chapter {
   name: string;
   slug: string;
   subject: string;
+  skillTags?: string[];
   questionCountDiagnostic?: number;
   questionCountPractice?: number;
   questionCountTest?: number;
@@ -42,6 +43,7 @@ export function ChapterProvider({ children }: { children: ReactNode }) {
             name: data.name || '',
             slug: data.slug || doc.id,
             subject: data.subject || '',
+            skillTags: data.skillTags || [],
             questionCountDiagnostic: data.questionCountDiagnostic || 0,
             questionCountPractice: data.questionCountPractice || 0,
             questionCountTest: data.questionCountTest || 0,
@@ -51,8 +53,12 @@ export function ChapterProvider({ children }: { children: ReactNode }) {
           };
         }) as Chapter[];
         
-        // Sort chapters by name
-        chaptersList.sort((a, b) => a.name.localeCompare(b.name));
+        // Sort chapters by name with proper null handling
+        chaptersList.sort((a, b) => {
+          const nameA = a.name || a.id || '';
+          const nameB = b.name || b.id || '';
+          return nameA.localeCompare(nameB);
+        });
         
         setChapters(chaptersList);
         setLoading(false);

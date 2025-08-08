@@ -91,7 +91,7 @@ function BreakdownsManager() {
             </h1>
           </div>
         </div>
-        <SlidesEditor breakdownId={editingBreakdownId} chapterSlug={selectedChapter.slug} />
+        <SlidesEditor breakdownId={editingBreakdownId} collectionSuffix="Breakdowns" />
       </div>
     );
   }
@@ -202,9 +202,17 @@ function BreakdownsManager() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                    {breakdown.skillTag}
-                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(
+                      (breakdown as any).skillTags && (breakdown as any).skillTags.length > 0
+                        ? (breakdown as any).skillTags
+                        : [breakdown.skillTag].filter(Boolean)
+                    ).map((tag: string) => (
+                      <span key={tag} className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
