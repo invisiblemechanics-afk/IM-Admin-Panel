@@ -20,7 +20,7 @@ function App() {
       <AuthProvider>
         <ProtectedRoute>
           <ChapterProvider>
-            <Router basename={import.meta.env.BASE_URL}>
+            <Router>
               <Routes>
                 <Route path="/" element={<Navigate to="/admin/diagnostic" replace />} />
                 <Route path="/admin" element={<AdminLayout />}>

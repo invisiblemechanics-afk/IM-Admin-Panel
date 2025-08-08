@@ -17,7 +17,13 @@ export default defineConfig({
       },
     },
     sourcemap: false,
-    minify: 'esbuild', // Using esbuild instead of terser for better compatibility
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
   },
   server: {
     port: 5173,
