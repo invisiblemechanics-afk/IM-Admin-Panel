@@ -4,6 +4,7 @@ import { useChapterCollection } from '../../hooks/useChapterFirestore';
 import { Plus, Edit, Trash2, Play } from 'lucide-react';
 import VideoForm from './VideoForm';
 import Button from './Button';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const LoadingSkeleton = () => (
   <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -38,6 +39,9 @@ function VideosManager() {
   const { data: videos, loading, error, createItem, updateItem, deleteItem, selectedChapter } = useChapterCollection<ChapterVideo>('Theory');
   const [selectedVideo, setSelectedVideo] = useState<ChapterVideo | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  // Check user permissions
+  const { canDelete, canCreate, canUpdate } = usePermissions();
 
   const handleCreate = () => {
     setSelectedVideo(null);
@@ -58,6 +62,10 @@ function VideosManager() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      alert('You do not have permission to delete videos.');
+      return;
+    }
     if (confirm('Are you sure you want to delete this video?')) {
       await deleteItem(id);
     }
@@ -128,7 +136,7 @@ function VideosManager() {
           onClick={handleCreate}
           icon={Plus}
           variant="primary"
-          disabled={!selectedChapter}
+          disabled={!selectedChapter || !canCreate}
         >
           Create New
         </Button>
@@ -190,15 +198,17 @@ function VideosManager() {
                   >
                     <span className="sr-only">Edit</span>
                   </Button>
-                  <Button
-                    onClick={() => handleDelete(video.id)}
-                    variant="danger"
-                    size="sm"
-                    icon={Trash2}
-                    className="p-2"
-                  >
-                    <span className="sr-only">Delete</span>
-                  </Button>
+                  {canDelete && (
+                    <Button
+                      onClick={() => handleDelete(video.id)}
+                      variant="danger"
+                      size="sm"
+                      icon={Trash2}
+                      className="p-2"
+                    >
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}

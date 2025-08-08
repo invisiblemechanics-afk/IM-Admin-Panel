@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2, Layers } from 'lucide-react';
 import QuestionForm from './QuestionForm';
 import SlidesEditor from './SlidesEditor';
 import Button from './Button';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface QuestionsManagerProps {
   title: string;
@@ -43,6 +44,9 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionBase | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  
+  // Check user permissions
+  const { canDelete, canCreate, canUpdate } = usePermissions();
 
 
 
@@ -88,6 +92,10 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      alert('You do not have permission to delete questions.');
+      return;
+    }
     if (confirm('Are you sure you want to delete this question?')) {
       console.log('Deleting question:', id);
       await deleteItem(id);
@@ -177,7 +185,7 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
           onClick={handleCreate}
           icon={Plus}
           variant="primary"
-          disabled={!selectedChapter}
+          disabled={!selectedChapter || !canCreate}
         >
           Create New
         </Button>
@@ -257,15 +265,17 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
                   >
                     <span className="sr-only">Edit</span>
                   </Button>
-                  <Button
-                    onClick={() => handleDelete(question.id)}
-                    variant="danger"
-                    size="sm"
-                    icon={Trash2}
-                    className="p-2"
-                  >
-                    <span className="sr-only">Delete</span>
-                  </Button>
+                  {canDelete && (
+                    <Button
+                      onClick={() => handleDelete(question.id)}
+                      variant="danger"
+                      size="sm"
+                      icon={Trash2}
+                      className="p-2"
+                    >
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}

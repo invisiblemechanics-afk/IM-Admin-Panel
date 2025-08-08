@@ -2,6 +2,8 @@ import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './components/admin/AdminLayout';
 import { ChapterProvider } from './contexts/ChapterContext';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy load components for better performance
@@ -15,11 +17,13 @@ import LoadingSpinner from './components/LoadingSpinner';
 function App() {
   return (
     <ErrorBoundary>
-      <ChapterProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<Navigate to="/admin/diagnostic" replace />} />
-            <Route path="/admin" element={<AdminLayout />}>
+      <AuthProvider>
+        <ProtectedRoute>
+          <ChapterProvider>
+            <Router>
+              <Routes>
+                <Route path="/" element={<Navigate to="/admin/diagnostic" replace />} />
+                <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/diagnostic" replace />} />
             <Route 
               path="diagnostic" 
@@ -79,9 +83,11 @@ function App() {
               } 
             />
             </Route>
-          </Routes>
-      </Router>
-    </ChapterProvider>
+              </Routes>
+            </Router>
+          </ChapterProvider>
+        </ProtectedRoute>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

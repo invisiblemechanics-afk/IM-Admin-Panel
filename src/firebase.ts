@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, enableNetwork, disableNetwork } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getAuth } from 'firebase/auth';
 
 // Your Firebase configuration
 const firebaseConfig = {
@@ -15,11 +16,13 @@ const firebaseConfig = {
 let app;
 let db;
 let storage;
+let auth;
 
 try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   storage = getStorage(app);
+  auth = getAuth(app);
   
   console.log('Firebase initialized successfully');
   console.log('Firebase config:', {
@@ -34,10 +37,11 @@ try {
   // Create mock objects for development
   db = null as any;
   storage = null as any;
+  auth = null as any;
 }
 
 // Network optimization functions
 export const enableFirestoreNetwork = () => enableNetwork(db);
 export const disableFirestoreNetwork = () => disableNetwork(db);
 
-export { db, storage };
+export { db, storage, auth };

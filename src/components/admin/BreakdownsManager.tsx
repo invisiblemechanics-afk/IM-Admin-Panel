@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2, Layers } from 'lucide-react';
 import BreakdownForm from './BreakdownForm';
 import SlidesEditor from './SlidesEditor';
 import Button from './Button';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const LoadingSkeleton = () => (
   <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -41,6 +42,9 @@ function BreakdownsManager() {
   const [selectedBreakdown, setSelectedBreakdown] = useState<Breakdown | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBreakdownId, setEditingBreakdownId] = useState<string | null>(null);
+  
+  // Check user permissions
+  const { canDelete, canCreate, canUpdate } = usePermissions();
 
   const handleCreate = () => {
     setSelectedBreakdown(null);
@@ -66,6 +70,10 @@ function BreakdownsManager() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) {
+      alert('You do not have permission to delete breakdowns.');
+      return;
+    }
     if (confirm('Are you sure you want to delete this breakdown? This will also delete all associated slides.')) {
       await deleteItem(id);
     }
@@ -155,7 +163,7 @@ function BreakdownsManager() {
           onClick={handleCreate}
           icon={Plus}
           variant="primary"
-          disabled={!selectedChapter}
+          disabled={!selectedChapter || !canCreate}
         >
           Create New
         </Button>
@@ -243,15 +251,17 @@ function BreakdownsManager() {
                   >
                     <span className="sr-only">Edit</span>
                   </Button>
-                  <Button
-                    onClick={() => handleDelete(breakdown.id)}
-                    variant="danger"
-                    size="sm"
-                    icon={Trash2}
-                    className="p-2"
-                  >
-                    <span className="sr-only">Delete</span>
-                  </Button>
+                  {canDelete && (
+                    <Button
+                      onClick={() => handleDelete(breakdown.id)}
+                      variant="danger"
+                      size="sm"
+                      icon={Trash2}
+                      className="p-2"
+                    >
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}

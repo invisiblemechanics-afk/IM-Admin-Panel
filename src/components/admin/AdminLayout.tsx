@@ -1,14 +1,17 @@
-import React from 'react';
+
 import { NavLink, Outlet } from 'react-router-dom';
 import { 
   FileQuestion, 
-  BookOpen, 
   Video, 
   Layers, 
   Settings,
-  Tag
+  Tag,
+  LogOut,
+  User
 } from 'lucide-react';
 import ChapterSelector from './ChapterSelector';
+import { useAuth } from '../../contexts/AuthContext';
+import { getAdminRoleDisplayName } from '../../config/adminUsers';
 
 const navigation = [
   { name: 'Diagnostic Questions', href: '/admin/diagnostic', icon: FileQuestion },
@@ -20,6 +23,13 @@ const navigation = [
 ];
 
 export default function AdminLayout() {
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    if (confirm('Are you sure you want to sign out?')) {
+      await logout();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -60,10 +70,29 @@ export default function AdminLayout() {
             </div>
           </nav>
           
-          {/* Footer space for future use */}
+          {/* User Profile & Logout */}
           <div className="border-t bg-gray-50 px-6 py-4 flex-shrink-0">
-            <div className="text-xs text-gray-500 text-center">
-              Admin Panel v2.0
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {user?.email || 'Admin'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {user ? getAdminRoleDisplayName(user.uid) : 'Admin Panel v2.0'}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

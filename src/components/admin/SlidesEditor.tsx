@@ -7,6 +7,7 @@ import SlideForm from './SlideForm';
 import Button from './Button';
 import Math from '../Math';
 import { useChapter } from '../../contexts/ChapterContext';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface SlidesEditorProps {
   breakdownId?: string;
@@ -21,6 +22,9 @@ function SlidesEditor({ breakdownId, questionId, collectionSuffix = 'Breakdowns'
   const [selectedSlide, setSelectedSlide] = useState<BreakdownSlide | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [slideType, setSlideType] = useState<'theory' | 'question'>('theory');
+  
+  // Check user permissions
+  const { canDelete, canCreate, canUpdate } = usePermissions();
 
   useEffect(() => {
     if (!selectedChapter) return;
@@ -82,6 +86,10 @@ function SlidesEditor({ breakdownId, questionId, collectionSuffix = 'Breakdowns'
   };
 
   const handleDeleteSlide = async (slideId: string) => {
+    if (!canDelete) {
+      alert('You do not have permission to delete slides.');
+      return;
+    }
     if (confirm('Are you sure you want to delete this slide?')) {
       if (!selectedChapter) return;
       
@@ -143,6 +151,7 @@ function SlidesEditor({ breakdownId, questionId, collectionSuffix = 'Breakdowns'
             onClick={() => handleCreateSlide('theory')}
             icon={Plus}
             variant="success"
+            disabled={!canCreate}
           >
             Add Theory Slide
           </Button>
@@ -150,6 +159,7 @@ function SlidesEditor({ breakdownId, questionId, collectionSuffix = 'Breakdowns'
             onClick={() => handleCreateSlide('question')}
             icon={Plus}
             variant="primary"
+            disabled={!canCreate}
           >
             Add Question Slide
           </Button>
@@ -213,12 +223,14 @@ function SlidesEditor({ breakdownId, questionId, collectionSuffix = 'Breakdowns'
                 >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => handleDeleteSlide(slide.id)}
-                  className="p-1 text-red-600 hover:text-red-800"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canDelete && (
+                  <button
+                    onClick={() => handleDeleteSlide(slide.id)}
+                    className="p-1 text-red-600 hover:text-red-800"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
