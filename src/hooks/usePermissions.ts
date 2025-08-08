@@ -1,5 +1,5 @@
 import { useAuth } from '../contexts/AuthContext';
-import { hasPermission, canDelete, getAdminRole } from '../config/adminUsers';
+import { hasPermission, canDelete, getAdminRole, canUseAI as canUseAIUtil } from '../config/adminUsers';
 
 export function usePermissions() {
   const { user } = useAuth();
@@ -20,5 +20,8 @@ export function usePermissions() {
     role: uid ? getAdminRole(uid) : null,
     isPrimaryAdmin: uid ? getAdminRole(uid) === 'primary' : false,
     isSecondaryAdmin: uid ? getAdminRole(uid) === 'secondary' : false,
+
+    // AI permissions
+    canUseAI: uid ? canUseAIUtil(uid) : false,
   };
 }

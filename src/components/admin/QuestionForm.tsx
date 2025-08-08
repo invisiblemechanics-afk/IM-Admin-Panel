@@ -6,6 +6,7 @@ import Button from './Button';
 import AutoGenerationButtons from './AutoGenerationButtons';
 import LatexRefinementButton from './LatexRefinementButton';
 import ImageUploader from './ImageUploader';
+import { usePermissions } from '../../hooks/usePermissions';
 
 // Updated: Removed detailedAnswer field from form
 
@@ -18,6 +19,7 @@ interface QuestionFormProps {
 
 function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps) {
   const { selectedChapter } = useChapter();
+  const { canUseAI } = usePermissions();
   const [formData, setFormData] = useState<Omit<QuestionBase, 'id'>>({
     type: 'MCQ',
     title: '',
@@ -238,7 +240,7 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
                   onContentRefined={(refinedContent) => 
                     setFormData(prev => ({ ...prev, questionText: refinedContent }))
                   }
-                  disabled={submitting}
+                  disabled={submitting || !canUseAI}
                 />
               </div>
             </div>
@@ -260,7 +262,7 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
                   title: data.title,
                   difficulty: data.difficulty
                 }))}
-                disabled={submitting}
+                disabled={submitting || !canUseAI}
               />
             </div>
           )}

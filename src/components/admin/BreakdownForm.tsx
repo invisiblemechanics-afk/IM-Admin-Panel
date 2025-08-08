@@ -6,6 +6,7 @@ import Button from './Button';
 import AutoGenerationButtons from './AutoGenerationButtons';
 import TagPicker from './TagPicker';
 import ImageUploader from './ImageUploader';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface BreakdownFormProps {
   breakdown?: Breakdown;
@@ -16,6 +17,7 @@ interface BreakdownFormProps {
 
 function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormProps) {
   const { selectedChapter } = useChapter();
+  const { canUseAI } = usePermissions();
   const [formData, setFormData] = useState<Omit<Breakdown, 'id'>>({
     title: '',
     description: '',
@@ -234,6 +236,7 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
                 onTitleGenerated={(title) => setFormData(prev => ({ ...prev, title }))}
                 onDifficultyGenerated={() => {}}
                 onAllGenerated={(data) => setFormData(prev => ({ ...prev, title: data.title, skillTag: data.skillTag, skillTags: Array.from(new Set([...(prev.skillTags || []), data.skillTag])) }))}
+                disabled={!canUseAI}
               />
             </div>
           )}

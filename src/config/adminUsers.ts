@@ -54,3 +54,9 @@ export function hasPermission(uid: string, action: 'create' | 'read' | 'update' 
       return false;
   }
 }
+
+// Whether a user can use AI auto-generation features
+export function canUseAI(uid: string): boolean {
+  // Both primary and secondary admins can use AI features
+  return isAuthorizedAdmin(uid);
+}
