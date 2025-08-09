@@ -1,12 +1,15 @@
 import React, { useState, useEffect, memo } from 'react';
-import { QuestionBase, QuestionType, ExamType } from '../../types';
+import { QuestionBase, QuestionType, ExamType, DiffBand, PartialScheme } from '../../types';
 import { useChapter } from '../../contexts/ChapterContext';
 import { X, Plus, Trash2 } from 'lucide-react';
 import Button from './Button';
 import AutoGenerationButtons from './AutoGenerationButtons';
 import LatexRefinementButton from './LatexRefinementButton';
 import ImageUploader from './ImageUploader';
+import SkillTagsMultiSelect from './SkillTagsMultiSelect';
 import { usePermissions } from '../../hooks/usePermissions';
+import { withComputedFields, defaultMarks } from '../../utils/testQuestionDefaults';
+import { ensureSkillTags } from '../../utils/skills';
 
 // Updated: Removed detailedAnswer field from form
 
@@ -15,52 +18,123 @@ interface QuestionFormProps {
   onSubmit: (question: Omit<QuestionBase, 'id'>) => Promise<void>;
   onClose: () => void;
   isOpen: boolean;
+  collectionName?: string; // To detect if this is Test Questions
 }
 
-function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps) {
+function QuestionForm({ question, onSubmit, onClose, isOpen, collectionName }: QuestionFormProps) {
   const { selectedChapter } = useChapter();
   const { canUseAI } = usePermissions();
+  const isTestQuestion = collectionName === 'Test-Questions';
+  
   const [formData, setFormData] = useState<Omit<QuestionBase, 'id'>>({
-    type: 'MCQ',
+    type: 'MCQ' as QuestionType,
     title: '',
     skillTag: '',
+    skillTags: [],
     questionText: '',
     chapter: '', // Will be auto-populated from selected chapter
     imageUrl: '',
     difficulty: 5,
-    exam: 'JEE Main',
+    exam: 'JEE Main' as ExamType,
     choices: ['', ''],
     answerIndex: 0,
     answerIndices: [],
-    range: { min: 0, max: 100 }
+    range: { min: 0, max: 100 },
+    // Test Question specific fields
+    ...(isTestQuestion && {
+      marksCorrect: 4,
+      marksWrong: -1,
+      timeSuggestedSec: 120,
+      optionShuffle: true,
+      status: 'ACTIVE' as const,
+      partialScheme: { mode: 'none' } as PartialScheme
+    })
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [marksTouched, setMarksTouched] = useState(false);
 
   useEffect(() => {
     if (question) {
+      // Get skill tags with fallback from legacy skillTag
+      const skillTags = question.skillTags && question.skillTags.length 
+        ? question.skillTags 
+        : (question.skillTag ? [question.skillTag] : []);
+      
       setFormData({
-        type: question.type,
+        type: question.type || 'MCQ',
         title: question.title || '',
-        skillTag: question.skillTag,
-        questionText: question.questionText,
-        chapter: question.chapter,
+        skillTag: question.skillTag || '',
+        skillTags: skillTags,
+        questionText: question.questionText || '',
+        chapter: question.chapter || '',
         imageUrl: question.imageUrl || '',
         difficulty: question.difficulty || 5,
         exam: question.exam || 'JEE Main',
         choices: question.choices || ['', ''],
         answerIndex: question.answerIndex || 0,
         answerIndices: question.answerIndices || [],
-        range: question.range || { min: 0, max: 100 }
+        range: question.range || { min: 0, max: 100 },
+        // Test Question specific fields
+        ...(isTestQuestion && {
+          marksCorrect: question.marksCorrect ?? 4,
+          marksWrong: question.marksWrong ?? -1,
+          timeSuggestedSec: question.timeSuggestedSec ?? 120,
+          optionShuffle: question.optionShuffle ?? true,
+          status: question.status ?? 'ACTIVE',
+          partialScheme: question.partialScheme ?? { mode: 'none' }
+        })
+      });
+    } else {
+      // Reset form for new question
+      const defaultMarksValues = isTestQuestion ? defaultMarks('JEE Main', 'MCQ') : {};
+      setFormData({
+        type: 'MCQ' as QuestionType,
+        title: '',
+        skillTag: '',
+        skillTags: [],
+        questionText: '',
+        chapter: '',
+        imageUrl: '',
+        difficulty: 5,
+        exam: 'JEE Main' as ExamType,
+        choices: ['', ''],
+        answerIndex: 0,
+        answerIndices: [],
+        range: { min: 0, max: 100 },
+        // Test Question specific fields
+        ...(isTestQuestion && {
+          marksCorrect: defaultMarksValues.correct,
+          marksWrong: defaultMarksValues.wrong,
+          timeSuggestedSec: 120,
+          optionShuffle: true,
+          status: 'ACTIVE' as const,
+          partialScheme: { mode: 'none' } as PartialScheme
+        })
       });
     }
-  }, [question]);
+    // Clear errors when question changes
+    setErrors({});
+    setMarksTouched(false);
+  }, [question, isTestQuestion]);
+
+  // Reactive marks update for Test Questions when exam or type changes
+  useEffect(() => {
+    if (isTestQuestion && !marksTouched && !question) {
+      const newMarks = defaultMarks(formData.exam || 'JEE Main', formData.type || 'MCQ');
+      setFormData(prev => ({
+        ...prev,
+        marksCorrect: newMarks.correct,
+        marksWrong: newMarks.wrong
+      }));
+    }
+  }, [formData.exam, formData.type, isTestQuestion, marksTouched, question]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.skillTag.trim()) newErrors.skillTag = 'Skill tag is required';
+    if (!formData.skillTags || formData.skillTags.length === 0) newErrors.skillTags = 'At least one skill tag is required';
 
     if (!formData.questionText.trim()) newErrors.questionText = 'Question text is required';
 
@@ -95,7 +169,7 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submission started');
-    console.log('Form data:', JSON.stringify(formData, null, 2));
+    console.log('Form data before cleaning:', JSON.stringify(formData, null, 2));
     
     if (!validateForm()) {
       console.log('Form validation failed');
@@ -104,15 +178,44 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
 
     setSubmitting(true);
     try {
-      // Auto-populate chapter from selected chapter
-      const finalData = {
-        ...formData,
-        chapter: selectedChapter?.name || formData.chapter
+      // Normalize skill tags and prepare data
+      const normalizedSkills = ensureSkillTags({ skillTags: formData.skillTags });
+      
+      // Clean the data and remove any undefined values
+      const cleanedData = {
+        type: formData.type || 'MCQ',
+        title: formData.title || '',
+        skillTag: normalizedSkills.skillTag,      // legacy single tag
+        skillTags: normalizedSkills.skillTags,    // canonical array
+        questionText: formData.questionText || '',
+        chapter: selectedChapter?.name || formData.chapter || '',
+        imageUrl: formData.imageUrl || '',
+        difficulty: formData.difficulty || 5,
+        exam: formData.exam || 'JEE Main',
+        choices: formData.choices || [],
+        answerIndex: formData.answerIndex || 0,
+        answerIndices: formData.answerIndices || [],
+        range: formData.range || { min: 0, max: 100 }
       };
-      console.log('Calling onSubmit with data:', JSON.stringify(finalData, null, 2));
+
+      // Filter out any remaining undefined values
+      let finalData = Object.fromEntries(
+        Object.entries(cleanedData).filter(([_, value]) => value !== undefined)
+      ) as Omit<QuestionBase, 'id'>;
+
+      // Apply computed fields for Test Questions
+      if (isTestQuestion) {
+        finalData = withComputedFields(finalData);
+        // Remove numerical field if it exists
+        if ('numerical' in finalData) {
+          delete (finalData as any).numerical;
+        }
+      }
+
+      console.log('Cleaned final data:', JSON.stringify(finalData, null, 2));
       await onSubmit(finalData);
       console.log('Form submitted successfully');
-      // Form will be closed by the parent component after successful submission
+      onClose(); // Close the form on success
     } catch (error) {
       console.error('Failed to submit question:', error);
       alert('Failed to create question. Please try again. Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -196,19 +299,16 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Skill Tag
-            </label>
-            <input
-              type="text"
-              value={formData.skillTag}
-              onChange={(e) => setFormData(prev => ({ ...prev, skillTag: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.skillTag ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="e.g., Vectors, Calculus"
+            <SkillTagsMultiSelect
+              source="global"
+              chapterId={selectedChapter?.id}
+              value={formData.skillTags}
+              onChange={(skillTags) => setFormData(prev => ({ ...prev, skillTags }))}
+              label="Skill Tags"
+              placeholder="Search all chapters…"
+              disabled={submitting}
             />
-            {errors.skillTag && <p className="mt-1 text-sm text-red-600">{errors.skillTag}</p>}
+            {errors.skillTags && <p className="mt-1 text-sm text-red-600">{errors.skillTags}</p>}
           </div>
 
           <div>
@@ -254,11 +354,16 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
                 questionType={formData.type}
                 exam={formData.exam}
                 onSkillTagGenerated={(skillTag) => setFormData(prev => ({ ...prev, skillTag }))}
+                onSkillTagsGenerated={(skillTags) => setFormData(prev => ({ 
+                  ...prev, 
+                  skillTags: Array.from(new Set([...prev.skillTags, ...skillTags]))
+                }))}
                 onTitleGenerated={(title) => setFormData(prev => ({ ...prev, title }))}
                 onDifficultyGenerated={(difficulty) => setFormData(prev => ({ ...prev, difficulty }))}
                 onAllGenerated={(data) => setFormData(prev => ({
                   ...prev,
                   skillTag: data.skillTag,
+                  skillTags: Array.from(new Set([...prev.skillTags, ...data.skillTags])),
                   title: data.title,
                   difficulty: data.difficulty
                 }))}
@@ -428,6 +533,172 @@ function QuestionForm({ question, onSubmit, onClose, isOpen }: QuestionFormProps
               </div>
               {errors.range && <p className="mt-1 text-sm text-red-600">{errors.range}</p>}
             </div>
+          )}
+
+          {/* Test Question specific fields */}
+          {isTestQuestion && (
+            <>
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Test Question Settings</h3>
+              </div>
+
+              {/* Marks section */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Marks for Correct Answer
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.marksCorrect || 0}
+                    onChange={(e) => {
+                      setMarksTouched(true);
+                      setFormData(prev => ({ ...prev, marksCorrect: parseFloat(e.target.value) || 0 }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                    step="0.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Marks for Wrong Answer
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.marksWrong || 0}
+                    onChange={(e) => {
+                      setMarksTouched(true);
+                      setFormData(prev => ({ ...prev, marksWrong: parseFloat(e.target.value) || 0 }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    step="0.5"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Time Suggested (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.timeSuggestedSec || 120}
+                    onChange={(e) => setFormData(prev => ({ ...prev, timeSuggestedSec: parseInt(e.target.value) || 120 }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status || 'ACTIVE'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'ACTIVE' | 'RETIRED' }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="RETIRED">Retired</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Option Shuffle for MCQ types */}
+              {(formData.type === 'MCQ' || formData.type === 'MultipleAnswer') && (
+                <div>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.optionShuffle ?? true}
+                      onChange={(e) => setFormData(prev => ({ ...prev, optionShuffle: e.target.checked }))}
+                      className="mr-2 text-blue-600"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Shuffle answer choices during test
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {/* Partial Scoring for Multiple Answer */}
+              {formData.type === 'MultipleAnswer' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Partial Scoring Scheme
+                  </label>
+                  <div className="space-y-3">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="partialScheme"
+                        checked={(formData.partialScheme as PartialScheme)?.mode === 'none'}
+                        onChange={() => setFormData(prev => ({ ...prev, partialScheme: { mode: 'none' } }))}
+                        className="mr-2 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">No partial marks</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="partialScheme"
+                        checked={(formData.partialScheme as PartialScheme)?.mode === 'allCorrectOrZero'}
+                        onChange={() => setFormData(prev => ({ ...prev, partialScheme: { mode: 'allCorrectOrZero' } }))}
+                        className="mr-2 text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">All correct or zero</span>
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        name="partialScheme"
+                        checked={(formData.partialScheme as PartialScheme)?.mode === 'perOption'}
+                        onChange={() => setFormData(prev => ({ ...prev, partialScheme: { mode: 'perOption', perOptionMarks: 1 } }))}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">Per correct option:</span>
+                      <input
+                        type="number"
+                        value={(formData.partialScheme as any)?.perOptionMarks || 1}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          partialScheme: { mode: 'perOption', perOptionMarks: parseFloat(e.target.value) || 1 } 
+                        }))}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        step="0.5"
+                        disabled={(formData.partialScheme as PartialScheme)?.mode !== 'perOption'}
+                      />
+                      <span className="text-sm text-gray-700">marks</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        name="partialScheme"
+                        checked={(formData.partialScheme as PartialScheme)?.mode === 'negativePerWrong'}
+                        onChange={() => setFormData(prev => ({ ...prev, partialScheme: { mode: 'negativePerWrong', perWrong: -0.5 } }))}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">Negative per wrong:</span>
+                      <input
+                        type="number"
+                        value={(formData.partialScheme as any)?.perWrong || -0.5}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          partialScheme: { mode: 'negativePerWrong', perWrong: parseFloat(e.target.value) || -0.5 } 
+                        }))}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        step="0.5"
+                        disabled={(formData.partialScheme as PartialScheme)?.mode !== 'negativePerWrong'}
+                      />
+                      <span className="text-sm text-gray-700">marks</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+            </>
           )}
 
           <div className="flex justify-end space-x-3 pt-6 border-t">

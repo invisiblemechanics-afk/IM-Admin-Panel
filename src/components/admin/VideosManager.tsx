@@ -142,23 +142,23 @@ function VideosManager() {
         </Button>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '40%'}}>
                 Title
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '20%'}}>
                 Skill Tag
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '10%'}}>
                 Duration
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '10%'}}>
                 Order
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '20%', minWidth: '150px'}}>
                 Actions
               </th>
             </tr>
@@ -188,27 +188,29 @@ function VideosManager() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {video.order}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Button
-                    onClick={() => handleEdit(video)}
-                    variant="secondary"
-                    size="sm"
-                    icon={Edit}
-                    className="mr-2 p-2"
-                  >
-                    <span className="sr-only">Edit</span>
-                  </Button>
-                  {canDelete && (
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" style={{minWidth: '150px'}}>
+                  <div className="flex justify-end space-x-2">
                     <Button
-                      onClick={() => handleDelete(video.id)}
-                      variant="danger"
+                      onClick={() => handleEdit(video)}
+                      variant="secondary"
                       size="sm"
-                      icon={Trash2}
+                      icon={Edit}
                       className="p-2"
                     >
-                      <span className="sr-only">Delete</span>
+                      <span className="sr-only">Edit</span>
                     </Button>
-                  )}
+                    {canDelete && (
+                      <Button
+                        onClick={() => handleDelete(video.id)}
+                        variant="danger"
+                        size="sm"
+                        icon={Trash2}
+                        className="p-2"
+                      >
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

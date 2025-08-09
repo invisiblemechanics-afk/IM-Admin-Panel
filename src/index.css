@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Multi-line clamp without plugin */
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Performance optimization: Hardware acceleration for frequently used elements */
 .transition-all {
   will-change: transform, opacity, background-color;

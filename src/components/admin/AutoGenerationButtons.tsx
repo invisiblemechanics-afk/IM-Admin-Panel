@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { Sparkles, Brain, Target, Zap, Loader2 } from 'lucide-react';
-import { generateSkillTag, generateTitle, generateDifficulty, generateAll, AutoGenerationRequest } from '../../utils/openaiService';
+import { generateSkillTag, generateSkillTags, generateTitle, generateDifficulty, generateAll, AutoGenerationRequest } from '../../utils/openaiService';
 import { useChapter } from '../../contexts/ChapterContext';
+import { useAllSkillTags } from '../../lib/useAllSkillTags';
 
 interface AutoGenerationButtonsProps {
   questionText: string;
   questionType?: 'MCQ' | 'MultipleAnswer' | 'Numerical';
   exam?: 'JEE Main' | 'JEE Advanced' | 'NEET';
   onSkillTagGenerated?: (skillTag: string) => void;
+  onSkillTagsGenerated?: (skillTags: string[]) => void;
   onTitleGenerated?: (title: string) => void;
   onDifficultyGenerated?: (difficulty: number) => void;
-  onAllGenerated?: (data: { skillTag: string; title: string; difficulty: number }) => void;
+  onAllGenerated?: (data: { skillTag: string; skillTags: string[]; title: string; difficulty: number }) => void;
   disabled?: boolean;
   className?: string;
 }
@@ -20,6 +22,7 @@ export default function AutoGenerationButtons({
   questionType,
   exam,
   onSkillTagGenerated,
+  onSkillTagsGenerated,
   onTitleGenerated,
   onDifficultyGenerated,
   onAllGenerated,
@@ -27,6 +30,7 @@ export default function AutoGenerationButtons({
   className = ''
 }: AutoGenerationButtonsProps) {
   const { selectedChapter } = useChapter();
+  const { tags: allTagOptions } = useAllSkillTags();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,10 +46,12 @@ export default function AutoGenerationButtons({
     console.log('====================================');
   }, []);
 
+  const allTags = allTagOptions.map(t => t.value);
+  
   const generateRequest = (): AutoGenerationRequest => ({
     questionText,
     chapter: selectedChapter?.name,
-    availableSkillTags: selectedChapter?.skillTags || [],
+    availableSkillTags: allTags, // Use global tags instead of chapter-specific
     questionType,
     exam,
   });
@@ -58,15 +64,22 @@ export default function AutoGenerationButtons({
   };
 
   const handleGenerateSkillTag = async () => {
-    if (!canGenerate || disabled) return;
+    if (!canGenerate || disabled || allTags.length === 0) return;
     
     setLoading('skillTag');
     setError(null);
     try {
-      const skillTag = await generateSkillTag(generateRequest());
-      onSkillTagGenerated?.(skillTag);
+      const skillTags = await generateSkillTags(questionText, allTags, 5);
+      if (skillTags.length === 0) {
+        setError('No strong matches found; please tag manually.');
+        setTimeout(() => setError(null), 5000);
+      } else {
+        // Call both callbacks for backward compatibility
+        onSkillTagGenerated?.(skillTags[0]); // legacy single tag
+        onSkillTagsGenerated?.(skillTags); // new multiple tags
+      }
     } catch (error) {
-      handleError(error, 'generate skill tag');
+      handleError(error, 'generate skill tags');
     } finally {
       setLoading(null);
     }
@@ -103,7 +116,7 @@ export default function AutoGenerationButtons({
   };
 
   const handleGenerateAll = async () => {
-    if (!canGenerate || disabled) return;
+    if (!canGenerate || disabled || allTags.length === 0) return;
     
     setLoading('all');
     setError(null);
@@ -111,6 +124,7 @@ export default function AutoGenerationButtons({
       const result = await generateAll(generateRequest());
       onAllGenerated?.({
         skillTag: result.skillTag || '',
+        skillTags: result.skillTags || [],
         title: result.title || '',
         difficulty: result.difficulty || 5
       });
@@ -136,20 +150,18 @@ export default function AutoGenerationButtons({
       <div className="flex items-center space-x-2 text-sm text-gray-600">
         <Sparkles className="h-4 w-4 text-purple-500" />
         <span>AI-Powered Auto-Generation with ChatGPT 4o mini</span>
-        {selectedChapter && (
-          <span className="text-xs text-gray-500">
-            ({selectedChapter.skillTags?.length || 0} available skill tags)
-          </span>
-        )}
+        <span className="text-xs text-gray-500">
+          ({allTags.length} available skill tags across all chapters)
+        </span>
       </div>
 
       {/* Individual Generation Buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <button
           onClick={handleGenerateSkillTag}
-          disabled={!canGenerate || disabled || loading === 'skillTag'}
+          disabled={!canGenerate || disabled || loading === 'skillTag' || allTags.length === 0}
           className={buttonClass}
-          title="Auto-generate skill tag from available chapter tags"
+          title="Auto-generate skill tags from all available tags across chapters"
         >
           {loading === 'skillTag' ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -191,9 +203,9 @@ export default function AutoGenerationButtons({
       {/* Generate All Button */}
       <button
         onClick={handleGenerateAll}
-        disabled={!canGenerate || disabled || loading === 'all'}
+        disabled={!canGenerate || disabled || loading === 'all' || allTags.length === 0}
         className={`w-full ${buttonClass} from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-green-500`}
-        title="Auto-generate skill tag, title, and difficulty all at once"
+        title="Auto-generate skill tags, title, and difficulty all at once"
       >
         {loading === 'all' ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -207,6 +219,11 @@ export default function AutoGenerationButtons({
       {!canGenerate && (
         <p className="text-xs text-gray-500 text-center">
           Enter question text (minimum 10 characters) to enable AI generation
+        </p>
+      )}
+      {canGenerate && allTags.length === 0 && (
+        <p className="text-xs text-gray-500 text-center">
+          No skill tags found across chapters. AI generation requires available tags.
         </p>
       )}
     </div>

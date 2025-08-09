@@ -4,9 +4,10 @@ import { useChapter } from '../../contexts/ChapterContext';
 import { X, Plus, Trash2 } from 'lucide-react';
 import Button from './Button';
 import AutoGenerationButtons from './AutoGenerationButtons';
-import TagPicker from './TagPicker';
+import SkillTagsMultiSelect from './SkillTagsMultiSelect';
 import ImageUploader from './ImageUploader';
 import { usePermissions } from '../../hooks/usePermissions';
+import { ensureSkillTags } from '../../utils/skills';
 
 interface BreakdownFormProps {
   breakdown?: Breakdown;
@@ -38,12 +39,17 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
 
   useEffect(() => {
     if (breakdown) {
+      // Get skill tags with fallback from legacy skillTag
+      const skillTags = breakdown.skillTags && breakdown.skillTags.length 
+        ? breakdown.skillTags 
+        : (breakdown.skillTag ? [breakdown.skillTag] : []);
+      
       setFormData({
         title: breakdown.title,
         description: breakdown.description,
         chapterId: breakdown.chapterId,
         skillTag: breakdown.skillTag || '',
-        skillTags: breakdown.skillTags || [],
+        skillTags: skillTags,
         type: breakdown.type,
         imageUrl: breakdown.imageUrl || '',
         createdAt: breakdown.createdAt,
@@ -61,8 +67,8 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
 
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (!formData.skillTag.trim() && (!formData.skillTags || formData.skillTags.length === 0)) {
-      newErrors.skillTag = 'At least one skill tag is required';
+    if (!formData.skillTags || formData.skillTags.length === 0) {
+      newErrors.skillTags = 'At least one skill tag is required';
     }
 
     // Validate answer fields based on question type
@@ -98,10 +104,15 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
 
     setSubmitting(true);
     try {
-      // Auto-populate chapterId from selected chapter
+      // Normalize skill tags
+      const normalizedSkills = ensureSkillTags({ skillTags: formData.skillTags });
+      
+      // Auto-populate chapterId from selected chapter and include both skillTag and skillTags
       const finalData = {
         ...formData,
-        chapterId: selectedChapter?.name || formData.chapterId
+        chapterId: selectedChapter?.name || formData.chapterId,
+        skillTag: normalizedSkills.skillTag,      // legacy single tag
+        skillTags: normalizedSkills.skillTags     // canonical array
       };
       await onSubmit(finalData);
       onClose();
@@ -203,11 +214,16 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Skill Tags
               </label>
-              <TagPicker
-                selected={formData.skillTags || []}
-                onChange={(tags) => setFormData(prev => ({ ...prev, skillTags: tags, skillTag: tags[0] || '' }))}
+              <SkillTagsMultiSelect
+                source="global"
+                chapterId={selectedChapter?.id}
+                value={formData.skillTags || []}
+                onChange={(skillTags) => setFormData(prev => ({ ...prev, skillTags }))}
+                label="Skill Tags"
+                placeholder="Search all chapters…"
+                disabled={submitting}
               />
-              {errors.skillTag && <p className="mt-1 text-sm text-red-600">{errors.skillTag}</p>}
+              {errors.skillTags && <p className="mt-1 text-sm text-red-600">{errors.skillTags}</p>}
             </div>
 
             <div>
@@ -233,9 +249,18 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
                 questionText={formData.description}
                 questionType={formData.type}
                 onSkillTagGenerated={(skillTag) => setFormData(prev => ({ ...prev, skillTag, skillTags: Array.from(new Set([...(prev.skillTags || []), skillTag])) }))}
+                onSkillTagsGenerated={(skillTags) => setFormData(prev => ({ 
+                  ...prev, 
+                  skillTags: Array.from(new Set([...(prev.skillTags || []), ...skillTags]))
+                }))}
                 onTitleGenerated={(title) => setFormData(prev => ({ ...prev, title }))}
                 onDifficultyGenerated={() => {}}
-                onAllGenerated={(data) => setFormData(prev => ({ ...prev, title: data.title, skillTag: data.skillTag, skillTags: Array.from(new Set([...(prev.skillTags || []), data.skillTag])) }))}
+                onAllGenerated={(data) => setFormData(prev => ({ 
+                  ...prev, 
+                  title: data.title, 
+                  skillTag: data.skillTag, 
+                  skillTags: Array.from(new Set([...(prev.skillTags || []), ...data.skillTags])) 
+                }))}
                 disabled={!canUseAI}
               />
             </div>

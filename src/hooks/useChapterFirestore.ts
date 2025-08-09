@@ -68,12 +68,24 @@ export function useChapterCollection<T extends { id: string }>(collectionSuffix:
     
     try {
       console.log(`Creating item in ${collectionPath}`);
-      const docRef = await addDoc(collection(db, collectionPath), {
+      
+      // Log the exact data being sent to Firestore
+      const dataToSave = {
         ...item,
         chapterId: chapterName,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
-      });
+      };
+      console.log('Data being sent to Firestore:', JSON.stringify(dataToSave, null, 2));
+      
+      // Check for undefined values
+      const undefinedFields = Object.entries(dataToSave).filter(([_, value]) => value === undefined);
+      if (undefinedFields.length > 0) {
+        console.error('Found undefined fields:', undefinedFields);
+        throw new Error(`Cannot save data with undefined fields: ${undefinedFields.map(([key]) => key).join(', ')}`);
+      }
+      
+      const docRef = await addDoc(collection(db, collectionPath), dataToSave);
       
       // Update count on chapter document
       console.log('Selected chapter for count update:', { id: selectedChapter.id, slug: selectedChapter.slug, name: selectedChapter.name });

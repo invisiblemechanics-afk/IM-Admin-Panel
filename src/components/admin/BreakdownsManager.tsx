@@ -1,11 +1,13 @@
 import React, { useState, memo } from 'react';
 import { Breakdown } from '../../types';
 import { useChapterCollection } from '../../hooks/useChapterFirestore';
-import { Plus, Edit, Trash2, Layers } from 'lucide-react';
+import { Plus, Edit, Trash2, Layers, RefreshCw } from 'lucide-react';
 import BreakdownForm from './BreakdownForm';
 import SlidesEditor from './SlidesEditor';
 import Button from './Button';
 import { usePermissions } from '../../hooks/usePermissions';
+import { backfillSkillTagsForChapter } from '../../utils/backfillSkillTags';
+import { getDisplaySkillTags } from '../../utils/skills';
 
 const LoadingSkeleton = () => (
   <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -42,6 +44,7 @@ function BreakdownsManager() {
   const [selectedBreakdown, setSelectedBreakdown] = useState<Breakdown | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBreakdownId, setEditingBreakdownId] = useState<string | null>(null);
+  const [backfillingSkillTags, setBackfillingSkillTags] = useState(false);
   
   // Check user permissions
   const { canDelete, canCreate, canUpdate } = usePermissions();
@@ -81,6 +84,27 @@ function BreakdownsManager() {
 
   const handleEditSlides = (breakdownId: string) => {
     setEditingBreakdownId(breakdownId);
+  };
+
+  const handleBackfillSkillTags = async () => {
+    if (!selectedChapter) return;
+
+    setBackfillingSkillTags(true);
+    try {
+      const chapterName = selectedChapter.name || selectedChapter.slug;
+      const updated = await backfillSkillTagsForChapter(selectedChapter.id, chapterName);
+      
+      if (updated > 0) {
+        alert(`Successfully backfilled skillTags for ${updated} questions across all collections in ${chapterName} chapter`);
+      } else {
+        alert('No questions needed skillTags backfill.');
+      }
+    } catch (error) {
+      console.error('Backfill skill tags error:', error);
+      alert('Failed to backfill skill tags. Please try again.');
+    } finally {
+      setBackfillingSkillTags(false);
+    }
   };
 
   if (editingBreakdownId) {
@@ -159,33 +183,44 @@ function BreakdownsManager() {
     <div>
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Breakdowns</h1>
-        <Button
-          onClick={handleCreate}
-          icon={Plus}
-          variant="primary"
-          disabled={!selectedChapter || !canCreate}
-        >
-          Create New
-        </Button>
+        <div className="flex space-x-3">
+          <Button
+            onClick={handleBackfillSkillTags}
+            icon={RefreshCw}
+            variant="secondary"
+            loading={backfillingSkillTags}
+            disabled={!selectedChapter || backfillingSkillTags}
+          >
+            Backfill Skill Tags
+          </Button>
+          <Button
+            onClick={handleCreate}
+            icon={Plus}
+            variant="primary"
+            disabled={!selectedChapter || !canCreate}
+          >
+            Create New
+          </Button>
+        </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '40%'}}>
                 Title
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '15%'}}>
                 Chapter
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                Skill Tag
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '15%'}}>
+                Skill Tags
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '10%'}}>
                 Type
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '20%', minWidth: '150px'}}>
                 Actions
               </th>
             </tr>
@@ -200,7 +235,11 @@ function BreakdownsManager() {
                     </div>
                     <div className="ml-4 min-w-0 flex-1">
                       <div className="text-sm font-medium text-gray-900 break-words">{breakdown.title}</div>
-                      <div className="text-sm text-gray-500 truncate">{breakdown.description}</div>
+                      <div className="text-sm text-gray-500">
+                        <p className="clamp-2 leading-5" title={breakdown.description}>
+                          {breakdown.description}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -209,17 +248,23 @@ function BreakdownsManager() {
                     {breakdown.chapterId}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div className="flex flex-wrap gap-1">
-                    {(
-                      (breakdown as any).skillTags && (breakdown as any).skillTags.length > 0
-                        ? (breakdown as any).skillTags
-                        : [breakdown.skillTag].filter(Boolean)
-                    ).map((tag: string) => (
-                      <span key={tag} className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                        {tag}
-                      </span>
-                    ))}
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  <div className="flex items-center gap-1 flex-wrap max-w-[260px]">
+                    {(() => {
+                      const tags = getDisplaySkillTags(breakdown);
+                      return (
+                        <>
+                          {tags.slice(0, 2).map(tag => (
+                            <span key={tag} className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                              {tag}
+                            </span>
+                          ))}
+                          {tags.length > 2 && (
+                            <span className="text-xs text-gray-500">+{tags.length - 2}</span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -231,37 +276,39 @@ function BreakdownsManager() {
                     {breakdown.type}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Button
-                    onClick={() => handleEditSlides(breakdown.id)}
-                    variant="secondary"
-                    size="sm"
-                    icon={Layers}
-                    className="mr-2 p-2"
-                    title="Edit Slides"
-                  >
-                    <span className="sr-only">Edit Slides</span>
-                  </Button>
-                  <Button
-                    onClick={() => handleEdit(breakdown)}
-                    variant="secondary"
-                    size="sm"
-                    icon={Edit}
-                    className="mr-2 p-2"
-                  >
-                    <span className="sr-only">Edit</span>
-                  </Button>
-                  {canDelete && (
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" style={{minWidth: '150px'}}>
+                  <div className="flex justify-end space-x-2">
                     <Button
-                      onClick={() => handleDelete(breakdown.id)}
-                      variant="danger"
+                      onClick={() => handleEditSlides(breakdown.id)}
+                      variant="secondary"
                       size="sm"
-                      icon={Trash2}
+                      icon={Layers}
+                      className="p-2"
+                      title="Edit Slides"
+                    >
+                      <span className="sr-only">Edit Slides</span>
+                    </Button>
+                    <Button
+                      onClick={() => handleEdit(breakdown)}
+                      variant="secondary"
+                      size="sm"
+                      icon={Edit}
                       className="p-2"
                     >
-                      <span className="sr-only">Delete</span>
+                      <span className="sr-only">Edit</span>
                     </Button>
-                  )}
+                    {canDelete && (
+                      <Button
+                        onClick={() => handleDelete(breakdown.id)}
+                        variant="danger"
+                        size="sm"
+                        icon={Trash2}
+                        className="p-2"
+                      >
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

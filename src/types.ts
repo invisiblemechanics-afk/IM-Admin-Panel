@@ -1,12 +1,21 @@
 export type QuestionType = "Numerical" | "MCQ" | "MultipleAnswer";
 export type ExamType = "JEE Main" | "JEE Advanced" | "NEET";
 
+// Extended types for Test Questions
+export type DiffBand = 'easy' | 'moderate' | 'tough';
+export type PartialScheme = 
+  | { mode: 'none' }
+  | { mode: 'perOption'; perOptionMarks: number }
+  | { mode: 'allCorrectOrZero' }
+  | { mode: 'negativePerWrong'; perWrong: number };
+
 // ALL three question collections share this:
 export interface QuestionBase {
   id: string;             // Firestore doc ID
   type: QuestionType;
   title: string;
-  skillTag: string;
+  skillTag?: string;      // legacy single tag for backward compatibility
+  skillTags: string[];    // NEW canonical array of skill tags
   questionText: string;
   detailedAnswer?: string; // Made optional - removed from forms
   chapter: string;
@@ -19,6 +28,24 @@ export interface QuestionBase {
   answerIndices?: number[];
   // Numerical
   range?: { min: number; max: number };
+
+  // Extended fields for Test Questions (optional for backward compatibility)
+  difficultyBand?: DiffBand;
+  marksCorrect?: number;
+  marksWrong?: number;
+  timeSuggestedSec?: number;
+  optionShuffle?: boolean;
+  status?: 'ACTIVE' | 'RETIRED';
+  
+  // Only when type === 'MultipleAnswer'
+  partialScheme?: PartialScheme;
+  
+  // Only when type === 'Numerical'
+  numerical?: {
+    precision?: number;
+    tolerance?: number;
+    unit?: string;
+  };
 }
 
 // Chapter videos:
@@ -35,37 +62,30 @@ export interface ChapterVideo {
   order: number;          // display order
 }
 
-// Breakdowns & Slides:
-export type BreakdownSlide = 
-  | {
-      kind: "theory";
-      id: string;
-      title: string;
-      content: string;
-      imageUrl?: string;
-      hint?: string;
-      createdAt: any;
-      updatedAt: any;
-    }
-  | {
-      kind: "question";
-      id: string;
-      title: string;
-      content: string;
-      imageUrl?: string;
-      hint?: string;
-      createdAt: any;
-      updatedAt: any;
-      // reuse question schema
-      type: QuestionType;
-      skillTag: string;
-      questionText: string;
-      detailedAnswer?: string; // Made optional - removed from forms
-      choices?: string[];
-      answerIndex?: number;
-      answerIndices?: number[];
-      range?: { min: number; max: number };
-    };
+// Slides interface with order field (optional for backward compatibility)
+export interface Slide {
+  id: string;
+  title: string;
+  content: string;
+  kind: 'theory' | 'question';
+  imageUrl?: string;
+  order?: number;             // ← Optional for backward compatibility
+  createdAt: any;
+  updatedAt: any;
+  // Optional fields for question slides
+  hint?: string;
+  type?: QuestionType;
+  skillTag?: string;
+  questionText?: string;
+  detailedAnswer?: string;
+  choices?: string[];
+  answerIndex?: number;
+  answerIndices?: number[];
+  range?: { min: number; max: number };
+}
+
+// Keep BreakdownSlide as alias for backward compatibility
+export type BreakdownSlide = Slide;
 
 export interface Breakdown {
   id: string;
@@ -74,8 +94,8 @@ export interface Breakdown {
   chapterId: string;
   // Backward compatibility: legacy single tag
   skillTag?: string;
-  // New: support multiple tags (from any chapter)
-  skillTags?: string[];
+  // New: canonical multiple tags array
+  skillTags: string[];
   type: QuestionType;
   imageUrl?: string;
   createdAt: any;

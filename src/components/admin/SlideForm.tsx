@@ -1,13 +1,13 @@
 import React, { useState, useEffect, memo } from 'react';
-import { BreakdownSlide, QuestionType } from '../../types';
+import { Slide, QuestionType } from '../../types';
 import { X, Plus, Trash2 } from 'lucide-react';
 import Button from './Button';
 import LatexRefinementButton from './LatexRefinementButton';
 import ImageUploader from './ImageUploader';
 
 interface SlideFormProps {
-  slide?: BreakdownSlide;
-  onSubmit: (slide: Omit<BreakdownSlide, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  slide?: Slide;
+  onSubmit: (slide: Omit<Slide, 'id' | 'order' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onClose: () => void;
   isOpen: boolean;
   slideType: 'theory' | 'question';
