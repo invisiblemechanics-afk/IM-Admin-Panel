@@ -192,25 +192,25 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                 ID
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
                 Title
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                 Skill Tag
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                 Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                 Question
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                 Actions
               </th>
             </tr>
@@ -222,7 +222,7 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
                   {question.id}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
-                  <div className="max-w-xs truncate font-medium">
+                  <div className="font-medium break-words">
                     {question.title || 'No Title'}
                   </div>
                 </td>
@@ -241,7 +241,7 @@ function QuestionsManager({ title, collectionName }: QuestionsManagerProps) {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
-                  <div className="max-w-xs truncate">
+                  <div className="break-words">
                     {question.questionText}
                   </div>
                 </td>
