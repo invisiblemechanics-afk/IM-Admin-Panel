@@ -10,3 +10,7 @@ export function ensureSkillTags(input?: { skillTags?: string[]; skillTag?: strin
 export function getDisplaySkillTags(doc: { skillTags?: string[]; skillTag?: string }): string[] {
   return doc.skillTags && doc.skillTags.length ? doc.skillTags : (doc.skillTag ? [doc.skillTag] : []);
 }
+
+
+
+

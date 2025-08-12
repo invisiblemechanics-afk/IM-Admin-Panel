@@ -117,3 +117,54 @@ export interface Chapter {
   createdAt?: any;
   updatedAt?: any;
 }
+
+// Mock Test Types
+export type TestStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+export interface TestMeta {
+  id: string;
+  name: string;
+  description?: string;
+  exam: ExamType;
+  durationSec: number;                 // whole-test timer
+  status: TestStatus;                  // DRAFT by default
+  shuffleQuestions: boolean;           // default false
+  shuffleOptions: boolean;             // default false
+  // If null, use per-question marks (marksCorrect/marksWrong on question)
+  marksCorrectDefault?: number | null; // optional override
+  marksWrongDefault?: number | null;   // optional override (can be 0 or negative)
+
+  syllabusChapters: string[];          // chapterIds included
+  skillTags: string[];                 // cross-chapter tags (use global picker)
+
+  counts: {
+    totalQuestions: number;
+    byType: { MCQ: number; MultipleAnswer: number; Numerical: number };
+    byDifficulty: { easy: number; moderate: number; tough: number };
+    totalMarks?: number;               // computed summary
+  };
+
+  visibility?: { opensAt?: any; closesAt?: any }; // optional schedule
+  createdAt: any;
+  updatedAt: any;
+  createdBy: string;                   // uid
+  version?: number;                    // for future changes
+}
+
+// Subcollection: /Tests/{testId}/Questions/{itemId}
+export interface TestItem {
+  order: number;                       // 0-based order in the test
+  refPath: string;                     // absolute path to source question:
+                                       // "Chapters/{chapterId}/{chapterId}-Test-Questions/{questionId}"
+  chapterId: string;
+  questionId: string;
+  type: 'MCQ' | 'MultipleAnswer' | 'Numerical';
+  skillTags: string[];
+  difficulty?: number;                 // from question.difficulty
+  difficultyBand?: 'easy' | 'moderate' | 'tough';
+  marksCorrect?: number | null;        // override per question (optional)
+  marksWrong?: number | null;          // override per question (optional)
+  timeSuggestedSec?: number | null;    // optional per-question timer
+  // future flags
+  required?: boolean;                  // reserved
+}

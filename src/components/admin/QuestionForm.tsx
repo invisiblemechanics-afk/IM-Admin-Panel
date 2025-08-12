@@ -182,7 +182,7 @@ function QuestionForm({ question, onSubmit, onClose, isOpen, collectionName }: Q
       const normalizedSkills = ensureSkillTags({ skillTags: formData.skillTags });
       
       // Clean the data and remove any undefined values
-      const cleanedData = {
+      const cleanedData: any = {
         type: formData.type || 'MCQ',
         title: formData.title || '',
         skillTag: normalizedSkills.skillTag,      // legacy single tag
@@ -197,6 +197,16 @@ function QuestionForm({ question, onSubmit, onClose, isOpen, collectionName }: Q
         answerIndices: formData.answerIndices || [],
         range: formData.range || { min: 0, max: 100 }
       };
+
+      // Include Test Question specific fields if this is a Test Question
+      if (isTestQuestion) {
+        cleanedData.marksCorrect = formData.marksCorrect;
+        cleanedData.marksWrong = formData.marksWrong;
+        cleanedData.timeSuggestedSec = formData.timeSuggestedSec;
+        cleanedData.optionShuffle = formData.optionShuffle;
+        cleanedData.status = formData.status;
+        cleanedData.partialScheme = formData.partialScheme;
+      }
 
       // Filter out any remaining undefined values
       let finalData = Object.fromEntries(

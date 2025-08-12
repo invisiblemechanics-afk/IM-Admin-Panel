@@ -30,5 +30,6 @@ export function withComputedFields<T extends Partial<QuestionBase>>(q: T): T {
     timeSuggestedSec: q.timeSuggestedSec ?? 120,
     optionShuffle: q.optionShuffle ?? true,
     status: q.status ?? 'ACTIVE',
+    partialScheme: q.partialScheme ?? { mode: 'none' },
   } as T;
 }

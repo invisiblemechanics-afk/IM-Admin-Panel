@@ -11,6 +11,8 @@ const QuestionsManager = React.lazy(() => import('./components/admin/QuestionsMa
 const VideosManager = React.lazy(() => import('./components/admin/VideosManager'));
 const BreakdownsManager = React.lazy(() => import('./components/admin/BreakdownsManager'));
 const SkillTagsManager = React.lazy(() => import('./components/admin/SkillTagsManager'));
+const TestsList = React.lazy(() => import('./admin/mock-tests/pages/TestsList'));
+const TestBuilder = React.lazy(() => import('./admin/mock-tests/pages/TestBuilder'));
 
 import LoadingSpinner from './components/LoadingSpinner';
 
@@ -79,6 +81,30 @@ function App() {
               element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <SkillTagsManager />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="mock-tests" 
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <TestsList />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="mock-tests/new" 
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <TestBuilder />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="mock-tests/:testId/edit" 
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <TestBuilder />
                 </Suspense>
               } 
             />

@@ -1,5 +1,5 @@
 
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { 
   FileQuestion, 
   Video, 
@@ -7,7 +7,8 @@ import {
   Settings,
   Tag,
   LogOut,
-  User
+  User,
+  FileText
 } from 'lucide-react';
 import ChapterSelector from './ChapterSelector';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Diagnostic Questions', href: '/admin/diagnostic', icon: FileQuestion },
   { name: 'Practice Questions', href: '/admin/practice', icon: FileQuestion },
   { name: 'Test Questions', href: '/admin/test', icon: FileQuestion },
+  { name: 'Create Mock Test', href: '/admin/mock-tests', icon: FileText },
   { name: 'Chapter Videos', href: '/admin/videos', icon: Video },
   { name: 'Breakdowns', href: '/admin/breakdowns', icon: Layers },
   { name: 'Skill Tags', href: '/admin/skilltags', icon: Tag },
@@ -24,12 +26,16 @@ const navigation = [
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
+  const location = useLocation();
 
   const handleLogout = async () => {
     if (confirm('Are you sure you want to sign out?')) {
       await logout();
     }
   };
+
+  // Hide chapter selector for mock test pages
+  const shouldShowChapterSelector = !location.pathname.startsWith('/admin/mock-tests');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,8 +107,8 @@ export default function AdminLayout() {
         <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
           <main className="flex-1 overflow-y-auto">
             <div className="p-6 lg:p-8">
-              <ChapterSelector />
-              <div className="mt-6">
+              {shouldShowChapterSelector && <ChapterSelector />}
+              <div className={shouldShowChapterSelector ? "mt-6" : ""}>
                 <Outlet />
               </div>
             </div>

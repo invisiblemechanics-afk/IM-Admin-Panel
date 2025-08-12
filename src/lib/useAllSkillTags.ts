@@ -75,3 +75,7 @@ export function useAllSkillTags() {
 
   return { tags, loading, error, refresh: fetchAll };
 }
+
+
+
+
