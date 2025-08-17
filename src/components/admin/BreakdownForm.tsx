@@ -38,6 +38,9 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    console.log('BreakdownForm: Selected chapter changed:', selectedChapter);
+    console.log('BreakdownForm: Breakdown prop:', breakdown);
+    
     if (breakdown) {
       // Get skill tags with fallback from legacy skillTag
       const skillTags = breakdown.skillTags && breakdown.skillTags.length 
@@ -59,12 +62,32 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
         answerIndices: breakdown.answerIndices || [],
         range: breakdown.range || { min: 0, max: 100 }
       });
+    } else {
+      // Reset form for new breakdown
+      setFormData({
+        title: '',
+        description: '',
+        chapterId: '', // Will be auto-populated from selected chapter
+        skillTag: '',
+        skillTags: [],
+        type: 'MCQ',
+        imageUrl: '',
+        createdAt: null,
+        updatedAt: null,
+        choices: ['', ''],
+        answerIndex: 0,
+        answerIndices: [],
+        range: { min: 0, max: 100 }
+      });
     }
-  }, [breakdown]);
+  }, [breakdown, selectedChapter]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    if (!selectedChapter) {
+      newErrors.chapter = 'Please select a chapter first';
+    }
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.skillTags || formData.skillTags.length === 0) {
@@ -100,9 +123,17 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    console.log('Form submitted, validating...');
+    
+    if (!validateForm()) {
+      console.log('Form validation failed:', errors);
+      return;
+    }
 
+    console.log('Form validation passed, submitting...');
     setSubmitting(true);
+    setErrors({}); // Clear any previous errors
+    
     try {
       // Normalize skill tags
       const normalizedSkills = ensureSkillTags({ skillTags: formData.skillTags });
@@ -114,10 +145,16 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
         skillTag: normalizedSkills.skillTag,      // legacy single tag
         skillTags: normalizedSkills.skillTags     // canonical array
       };
+      
+      console.log('Final data to submit:', finalData);
+      console.log('Selected chapter:', selectedChapter);
+      
       await onSubmit(finalData);
+      console.log('Breakdown submitted successfully');
       onClose();
     } catch (error) {
       console.error('Failed to submit breakdown:', error);
+      setErrors({ submit: `Failed to create breakdown: ${error instanceof Error ? error.message : 'Unknown error'}` });
     } finally {
       setSubmitting(false);
     }
@@ -166,6 +203,18 @@ function BreakdownForm({ breakdown, onSubmit, onClose, isOpen }: BreakdownFormPr
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {errors.submit && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="text-red-800 text-sm">{errors.submit}</div>
+            </div>
+          )}
+          
+          {errors.chapter && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="text-red-800 text-sm">{errors.chapter}</div>
+            </div>
+          )}
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Title

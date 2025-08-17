@@ -42,3 +42,8 @@ export default function TypeChips({ type, className = '' }: TypeChipsProps) {
 
 
 
+
+
+
+
+

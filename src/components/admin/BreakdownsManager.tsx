@@ -60,16 +60,30 @@ function BreakdownsManager() {
   };
 
   const handleSubmit = async (breakdownData: Omit<Breakdown, 'id'>) => {
-    let breakdownId;
-    if (selectedBreakdown) {
-      await updateItem(selectedBreakdown.id, breakdownData);
-      breakdownId = selectedBreakdown.id;
-    } else {
-      breakdownId = await createItem(breakdownData);
+    try {
+      console.log('BreakdownsManager: Submitting breakdown data:', breakdownData);
+      
+      let breakdownId;
+      if (selectedBreakdown) {
+        console.log('BreakdownsManager: Updating existing breakdown:', selectedBreakdown.id);
+        await updateItem(selectedBreakdown.id, breakdownData);
+        breakdownId = selectedBreakdown.id;
+      } else {
+        console.log('BreakdownsManager: Creating new breakdown');
+        breakdownId = await createItem(breakdownData);
+        console.log('BreakdownsManager: Created breakdown with ID:', breakdownId);
+      }
+      
+      // Close the form first
+      setIsFormOpen(false);
+      
+      // Open slides editor after creating/updating
+      setEditingBreakdownId(breakdownId);
+    } catch (error) {
+      console.error('BreakdownsManager: Error submitting breakdown:', error);
+      alert(`Failed to ${selectedBreakdown ? 'update' : 'create'} breakdown: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error; // Re-throw so the form can handle it
     }
-    
-    // Open slides editor after creating/updating
-    setEditingBreakdownId(breakdownId);
   };
 
   const handleDelete = async (id: string) => {

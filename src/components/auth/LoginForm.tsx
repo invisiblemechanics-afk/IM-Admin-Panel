@@ -5,9 +5,10 @@ import { Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react';
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
+  onShowSetup?: () => void;
 }
 
-export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
+export default function LoginForm({ onLoginSuccess, onShowSetup }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,15 +21,19 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
     setError(null);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      onLoginSuccess();
+      console.log('Attempting to sign in with:', email);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Sign in successful:', userCredential.user.email);
+      // Don't call onLoginSuccess immediately - let AuthContext handle the state change
+      // onLoginSuccess();
     } catch (err: any) {
       console.error('Login error:', err);
       
       // Handle different Firebase auth errors
       switch (err.code) {
         case 'auth/user-not-found':
-          setError('No account found with this email address.');
+        case 'auth/invalid-credential':
+          setError('No account found with this email address. Click "Need to create an admin account?" below to create one.');
           break;
         case 'auth/wrong-password':
           setError('Incorrect password. Please try again.');
@@ -43,7 +48,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           setError('Too many failed login attempts. Please try again later.');
           break;
         default:
-          setError('Login failed. Please check your credentials.');
+          setError('Login failed. Please check your credentials or create an account using the link below.');
       }
     } finally {
       setLoading(false);
@@ -142,10 +147,19 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
               </button>
             </div>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <p className="text-xs text-gray-500">
                 Authorized personnel only. All access is logged and monitored.
               </p>
+              {onShowSetup && (
+                <button
+                  type="button"
+                  onClick={onShowSetup}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Need to create an admin account? Click here
+                </button>
+              )}
             </div>
           </form>
         </div>
@@ -153,6 +167,11 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
     </div>
   );
 }
+
+
+
+
+
 
 
 

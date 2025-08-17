@@ -42,3 +42,8 @@ export default function DifficultyBadge({ band, className = '' }: DifficultyBadg
 
 
 
+
+
+
+
+

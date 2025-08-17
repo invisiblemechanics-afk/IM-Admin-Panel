@@ -27,13 +27,15 @@ try {
   console.log('Firebase initialized successfully');
   console.log('Firebase config:', {
     projectId: firebaseConfig.projectId,
-    authDomain: firebaseConfig.authDomain
+    authDomain: firebaseConfig.authDomain,
+    apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'Not set'
   });
   
   // Use production Firestore - no emulator
   console.log('Using production Firestore database');
 } catch (error) {
   console.error('Firebase initialization error:', error);
+  console.error('Firebase config that failed:', firebaseConfig);
   // Create mock objects for development
   db = null as any;
   storage = null as any;

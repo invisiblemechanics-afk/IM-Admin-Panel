@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { isAuthorizedAdmin } from '../../config/adminUsers';
 import LoginForm from './LoginForm';
+import AdminSetup from './AdminSetup';
 import UnauthorizedAccess from './UnauthorizedAccess';
 import LoadingSpinner from '../LoadingSpinner';
 
@@ -11,6 +12,7 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
+  const [showSetup, setShowSetup] = useState(false);
 
   if (loading) {
     return (
@@ -21,7 +23,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return <LoginForm onLoginSuccess={() => {}} />;
+    if (showSetup) {
+      return <AdminSetup onSetupComplete={() => setShowSetup(false)} />;
+    }
+    return <LoginForm onLoginSuccess={() => {}} onShowSetup={() => setShowSetup(true)} />;
   }
 
   // Check if user is authorized admin

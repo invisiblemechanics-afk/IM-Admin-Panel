@@ -1,3 +1,5 @@
+import { isTempAdmin } from './tempAdmins';
+
 // Admin role types
 export type AdminRole = 'primary' | 'secondary';
 
@@ -5,17 +7,32 @@ export type AdminRole = 'primary' | 'secondary';
 export const AUTHORIZED_ADMINS: Record<string, AdminRole> = {
   'Aayx2gnj7yRakyRP0FjzZ78PkKd2': 'primary',   // Primary Admin - Full access
   'YkPeEILGa0V4KxqGGtpk23td7uh1': 'secondary', // Secondary Admin - No delete access
+  'R1D3CKzVSDUHWG3QQ2to9llEg9p2': 'primary',   // New Primary Admin - invisiblemechanics@gmail.com
+  '2I36eUVwgoh5EvN6JVuBlheLDep2': 'secondary', // Secondary Admin - No delete access
 };
+
+
 
 // Check if a user UID is authorized for admin access
 export function isAuthorizedAdmin(uid: string | undefined): boolean {
   if (!uid) return false;
-  return uid in AUTHORIZED_ADMINS;
+  // Check permanent admins first
+  if (uid in AUTHORIZED_ADMINS) return true;
+  // Check temporary admins (for newly created accounts)
+  return isTempAdmin(uid);
 }
 
 // Get admin role for a user
 export function getAdminRole(uid: string): AdminRole | null {
-  return AUTHORIZED_ADMINS[uid] || null;
+  // Check permanent admins first
+  if (uid in AUTHORIZED_ADMINS) {
+    return AUTHORIZED_ADMINS[uid];
+  }
+  // Temporary admins get primary role by default
+  if (isTempAdmin(uid)) {
+    return 'primary';
+  }
+  return null;
 }
 
 // Get admin role display name

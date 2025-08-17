@@ -100,3 +100,8 @@ function mapDifficultyToBand(difficulty?: number): 'easy' | 'moderate' | 'tough'
 
 
 
+
+
+
+
+
